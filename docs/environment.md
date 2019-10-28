@@ -37,8 +37,8 @@ If you are using `virtualenv`, please put the virtual environment folder in `ven
 
 Finally make sure your `python` and `pip` version:
 
-    $ python --version
-    $ pip --version
+    python --version
+    pip --version
 
 ## pip Dependencies
 
