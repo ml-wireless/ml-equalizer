@@ -119,4 +119,4 @@ if __name__ == "__main__":
     for i in range(4):
         for j in range(3):
             plot(axes[i, j], data, label, snrs[j], cfo, taps[i])
-    plt.savefig('tmp/channel.png')
+    plt.savefig('figure/channel.png')
