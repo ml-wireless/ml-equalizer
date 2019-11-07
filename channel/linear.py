@@ -70,11 +70,11 @@ def rms_power(x):
     x = np.sum(x ** 2, axis=-1)
     return np.sqrt(np.mean(x, axis=-1))
 
-def awgn_proc(x, snr):
+def awgn_proc(snr, x):
     """
     awgn noise
-    `x`: (*, n, 2)
     `snr`: (*)
+    `x`: (*, n, 2)
     `returns`: (*, n, 2)
     """
     noise = rms_power(x) / (10 ** (snr / 20))
@@ -83,6 +83,45 @@ def awgn_proc(x, snr):
         noise = np.expand_dims(noise, axis=-1)
     noise = noise * np.random.randn(*shapes)
     return x + noise
+
+
+class LinearChannel(object):
+    def __init__(self, tap_size, snr, max_cfo=None):
+        """
+        tap_size: self explained
+        snr: self explained
+        max_cfo: should in (0, pi) or None for no cfo, cfo will be generated in [-max_cfo, max_cfo]
+
+        TODO: only real tap now
+        """
+        self.tap_size = tap_size
+        self.snr = snr
+        self.max_cfo = max_cfo
+    
+    def generateParameters(self, m=None):
+        """
+        m: batch size, None for no batch
+        """
+        shape = (self.tap_size,) if m == None else (m, self.tap_size)
+        taps = np.random.randn(*shape)
+        taps = taps / np.sqrt(np.sum(taps ** 2, axis=-1, keepdims=True))
+        if self.max_cfo == None:
+            return taps
+        else:
+            # output format TBD
+            cfo = np.random.uniform(-self.max_cfo, self.max_cfo, m)
+            return taps, cfo
+    
+    def process(self, param, x):
+        if self.max_cfo == None:
+            taps = param
+        else:
+            taps, cfo = param
+        x = tap_proc(real_tap(taps), x)
+        if self.max_cfo != None:
+            x = cfo_proc(cfo, x)
+        x = awgn_proc(self.snr, x)
+        return x
 
 """
 an example
@@ -101,7 +140,7 @@ if __name__ == "__main__":
         tap = tap / np.sqrt(np.sum(tap ** 2, axis=-1))
         data = tap_proc(real_tap(tap), data)
         data = cfo_proc(cfo, data)
-        data = awgn_proc(data, snr)
+        data = awgn_proc(snr, data)
 
         ax.set_title('snr {}\ncfo {}\ntap {}'.format(snr, cfo, tap))
         ax.set_xlim((-2, 2))
