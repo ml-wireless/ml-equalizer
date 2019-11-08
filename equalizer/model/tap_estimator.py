@@ -13,6 +13,8 @@ class TapEstimator(nn.Module):
             fc = nn.Linear(middles[i], middles[i + 1])
             self.add_module('fc' + str(i), fc)
             self.fcs.append(fc)
+        
+        # self.train_info = TrainInfo('ktap', ('send', 'recv'), 'taps', F.mse_loss)
     
     def forward(self, send, recv):
         """
@@ -31,10 +33,7 @@ class TapEstimator(nn.Module):
         return x
 
 if __name__ == "__main__":
-    import os.path as path
-    import sys
-    sys.path.append('.')
-    from channel import LinearChannel
+    from ..channel import LinearChannel
 
     m = 50000
     n = 50
