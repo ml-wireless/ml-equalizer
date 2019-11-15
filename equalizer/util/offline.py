@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 def apply_list(fun, *x):
     if len(x) == 1:
-        return fun(x)
+        return fun(x[0])
     return tuple(map(fun, x))
 
 def to_torch(x):
@@ -103,9 +103,10 @@ def train_e2e(model, inputs, output, loss_func, train_size, batch_size, epoch, s
         train_loss.append(batch_eval(model, train_inputs, train_output, loss_func, batch_size, opt, silent))
 
         print("test on epoch {}".format(i + 1))
-        test_loss.append(test_model(model, test_inputs, test_output, loss_func))
+        test_loss.append(batch_eval(model, test_inputs, test_output, loss_func, batch_size))
         
         print("epoch {} train loss: {}, test loss: {}".format(i + 1, train_loss[-1], test_loss[-1]))
         torch.save(model.state_dict(), save_path)
+        print('save complete')
     
     return np.array(train_loss), np.array(test_loss)
