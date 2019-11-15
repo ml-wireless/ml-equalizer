@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from ..util import offline
 
 class TapEstimator(nn.Module):
     def __init__(self, seq_size, tap_size, middles=(300, 300)):
@@ -51,3 +52,17 @@ class TapEqualizer(nn.Module):
         x = F.relu(x)
         x = self.fc2(x)
         return x
+
+class NeuralTap(object):
+    def __init__(self, estimator, equalizer):
+        self.estimator = estimator
+        self.equalizer = equalizer
+        
+    def update_preamble(self, pream, pream_recv):
+        self.estimator.eval()
+        pream, pream_recv = offline.apply_list(offline.to_torch, pream, pream_recv)
+        self.param_est = self.estimator.forward(pream, pream_recv)
+    
+    def estimate(self, recv):
+        self.equalizer.eval()
+        return offline.to_numpy(self.equalizer.forward(self.param_est, offline.to_torch(recv)))

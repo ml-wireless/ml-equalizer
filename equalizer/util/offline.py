@@ -1,13 +1,20 @@
+import os
 import numpy as np
 import torch
 from torch.optim import Adam
 from ..channel import LinearChannel
 from tqdm import tqdm
 
+def apply_list(fun, *x):
+    if len(x) == 1:
+        return fun(x)
+    return tuple(map(fun, x))
+
 def to_torch(x):
-    x = x.astype(np.float32)
-    x = torch.from_numpy(x)
-    return x
+    return torch.from_numpy(x.astype(np.float32))
+
+def to_numpy(x):
+    return x.detach().cpu().numpy().astype(np.float)
 
 def gen_qpsk(batch_size, seq_size):
     """
@@ -20,54 +27,85 @@ def gen_qpsk(batch_size, seq_size):
     """
     data = np.random.choice([-1, 1], size=(batch_size, seq_size, 2))
     label = data[..., 0] + 1 + (data[..., 1] + 1) // 2
+    label = label.astype(np.int32)
     data = data / np.sqrt(2)
     return data, label
 
-def gen_ktap(batch_size, seq_size, tap_size, snr, mod=gen_qpsk, channel=LinearChannel):
-    send, label = mod(batch_size, seq_size)
+def gen_ktap(batch_size, seq_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel):
+    pream, _ = mod(batch_size, seq_size)
     ch = channel(tap_size, snr)
-    param = ch.generateParameters(batch_size)
-    recv = ch.process(param, send)
-    return send, label, param, recv
+    tap = ch.generateParameters(batch_size)
+    pream_recv = ch.process(tap, pream)
+    if payload_size <= 0:
+        return pream, tap, pream_recv
+    payload, label = mod(batch_size, payload_size)
+    payload_recv = ch.process(tap, payload)
+    return pream, pream_recv, payload_recv, label
 
-def train_model(model, optim, inputs, output, loss_func, batch_size, silent=True):
-    model.train()
-    loss_tot = 0
-    iteration = 0
-    train_size = inputs[0].shape[0]
-    r = range(0, train_size, batch_size)
+
+def demod_qpsk(x):
+    l = 2 * (x[..., 0] > 0) + 1 * (x[..., 1] > 0)
+    l = l.astype(np.int32)
+    return l
+
+def bit_error_rate(x, y, bits):
+    x = x ^ y
+    ret = 0
+    for i in range(bits):
+        ret += np.mean((x & (1 << i)) != 0)
+    return ret / bits
+
+def batch_eval(model, inputs, output, loss_func, batch_size, optim=None, silent=True):
+    if optim == None:
+        model.eval()
+    else:
+        model.train()
+    tot_size = inputs[0].shape[0]
+    r = range(0, tot_size, batch_size)
     if not silent:
         r = tqdm(r)
+    loss_tot = 0
+    iteration = 0
     for i in r:
-        optim.zero_grad()
-        batch = tuple(map(lambda x: x[i:i+batch_size], inputs))
-        est = model.forward(*batch)
-        loss = loss_func(est, output[i:i+batch_size])
+        batch_inputs = apply_list(lambda x: x[i:i+batch_size], *inputs)
+        batch_output = output[i:i+batch_size]
+        if optim != None:
+            optim.zero_grad()
+        est = model.forward(*batch_inputs)
+        loss = loss_func(est, batch_output)
         loss_tot += loss.item()
-        loss.backward()
-        optim.step()
         iteration += 1
+        if optim != None:
+            loss.backward()
+            optim.step()
     return loss_tot / iteration
 
-def test_model(model, inputs, output, loss_func):
-    model.eval()
-    est = model.forward(*inputs)
-    loss = loss_func(est, output)
-    return loss.item()
-
 def train_e2e(model, inputs, output, loss_func, train_size, batch_size, epoch, save_path, optim=Adam, silent=True):
+    save_dir = os.path.dirname(save_path)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    if os.path.exists(save_path):
+        print("load existing model")
+        model.load_state_dict(torch.load(save_path))
+
     opt = Adam(model.parameters())
     get_train = lambda x: to_torch(x[:train_size])
-    train_inputs = tuple(map(get_train, inputs))
-    train_output = get_train(output)
+    train_inputs = apply_list(get_train, *inputs)
+    train_output = apply_list(get_train, output)
     get_test = lambda x: to_torch(x[train_size:])
-    test_inputs = tuple(map(get_test, inputs))
-    test_output = get_test(output)
+    test_inputs = apply_list(get_test, *inputs)
+    test_output = apply_list(get_test, output)
+
     train_loss = []
     test_loss = []
+
     for i in range(epoch):
-        train_loss.append(train_model(model, opt, train_inputs, train_output, loss_func, batch_size, silent))
+        train_loss.append(batch_eval(model, train_inputs, train_output, loss_func, batch_size, opt, silent))
+
+        print("test on epoch {}".format(i + 1))
         test_loss.append(test_model(model, test_inputs, test_output, loss_func))
-        print("epoch {} train loss: {}, test loss: {}".format(i, train_loss[-1], test_loss[-1]))
-    torch.save(model.state_dict(), save_path)
+        
+        print("epoch {} train loss: {}, test loss: {}".format(i + 1, train_loss[-1], test_loss[-1]))
+        torch.save(model.state_dict(), save_path)
+    
     return np.array(train_loss), np.array(test_loss)
