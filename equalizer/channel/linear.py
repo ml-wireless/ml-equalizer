@@ -84,6 +84,16 @@ def awgn_proc(snr, x):
     noise = noise * np.random.randn(*shapes)
     return x + noise
 
+def inverse_tap(a, expand, trunc, eps):
+    """
+    inverse a tap using FFT:
+    a ->(DFT) A -> 1/(A+eps) ->(IDFT) b
+    `a`: (*, k)
+    `expand`: length to expand a, should be power of 2
+    `trunc`: truncate to produce b
+    `eps`:
+    """
+    ...
 
 class LinearChannel(object):
     def __init__(self, tap_size, snr, max_cfo=None):
