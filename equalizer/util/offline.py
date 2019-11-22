@@ -31,17 +31,30 @@ def gen_qpsk(batch_size, seq_size):
     data = data / np.sqrt(2)
     return data, label
 
-def gen_ktap(batch_size, seq_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel):
-    pream, _ = mod(batch_size, seq_size)
+def gen_ktap(batch_size, pream_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel):
+    """
+    generate ktap data
+    if pream_size <= 0 and payload_size > 0, return payload_recv, tap, label
+    if payload_size <= 0 and pream_size > 0, return pream, tap, pream_recv
+    if both > 0, return pream, pream_recv, payload_recv, label
+    """
     ch = channel(tap_size, snr)
     tap = ch.generateParameters(batch_size)
-    pream_recv = ch.process(tap, pream)
+
+    if pream_size > 0:
+        pream, _ = mod(batch_size, pream_size)
+        pream_recv = ch.process(tap, pream)
+    
+    if payload_size > 0:
+        payload, label = mod(batch_size, payload_size)
+        payload_recv = ch.process(tap, payload)
+        
     if payload_size <= 0:
         return pream, tap, pream_recv
-    payload, label = mod(batch_size, payload_size)
-    payload_recv = ch.process(tap, payload)
-    return pream, tap, pream_recv, payload_recv, label
-
+    elif pream_size <= 0:
+        return payload_recv, tap, label
+    else:
+        return pream, pream_recv, payload_recv, label
 
 def demod_qpsk(x):
     l = 2 * (x[..., 0] > 0) + 1 * (x[..., 1] > 0)

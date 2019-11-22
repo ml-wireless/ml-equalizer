@@ -48,7 +48,7 @@ def eval_e2e():
         batches = eval_size // batch_size
         ber = 0
         for _ in tqdm(range(batches)):
-            pream, _, pream_recv, payload_recv, label = offline.gen_ktap(batch_size, pream_size, eval_tap_size, snr, payload_size)
+            pream, pream_recv, payload_recv, label = offline.gen_ktap(batch_size, pream_size, eval_tap_size, snr, payload_size)
 
             model.update_preamble(pream, pream_recv)
             payload_est = model.estimate(payload_recv)
