@@ -79,7 +79,8 @@ for i in range(1, xm.shape[0]):
 mu = 0
 sigma = 1
 # @TODO parameterize awgn in terms of SNR
-y = y_clean + .1*np.random.normal(mu, sigma, y_clean.shape[0])
+# @TODO put awgn back into channel output once LMS works w/o
+y = y_clean# + .1*np.random.normal(mu, sigma, y_clean.shape[0])
 
 mse_y = ((xm[10:] - y[10:])**2).mean()
 mse_y_str = str(round(mse_y,5))
@@ -97,26 +98,59 @@ ct = ct + np.array([.00, .00])
 ######################################################################
 # Test ZFE with a-priori known channel
 ######################################################################
-yh = np.zeros(y.shape[0])
+yh_zfe = np.zeros(y.shape[0])
 
 for i in range(1, y.shape[0]):
-    yh[i] = (1/ct[0])*y[i] + (-1*ct[1]/ct[0])*yh[i-1]
-
+    yh_zfe[i] = (1/ct[0])*y[i] + (-1*ct[1]/ct[0])*yh_zfe[i-1]
 
 ######################################################################
-# Compute MSE between transmitted waveform and equalized waveform
+# Test LMS with learned channel
+# @TODO Fix the cost function for updating weights
+######################################################################
+yh_lms = np.zeros(y.shape[0])
+
+mu = 0.001 # step size
+N = 15      # order
+#w = np.array(.1*np.ones(N)) # .1 is an arbitrary non-zero value
+w = np.random.normal(0,1,N) # N rand weights
+d = xm # alias for readability
+
+for i in range(N-1, y.shape[0]):
+    # apply FIR to get current output sample
+    yh_lms[i] = y[(i-(N-1)):(i+1)].T @ w
+    # compute latest error
+    e = d[i] - yh_lms[i]
+    # update weights accordingly
+    w = w - mu*e*yh_lms[(i-(N-1)):(i+1)]
+
+######################################################################
+# Compute MSE between transmitted waveform and equalized waveforms
 ######################################################################
 # @note offset the sequences so mean isn't computed based on edge
 #       conditions (e.g. filter time delay)
-mse_yh = ((xm[10:] - yh[10:])**2).mean()
-mse_yh_str = str(round(mse_yh,5))
-mse_i_str = str(round(mse_y/mse_yh,5)) # improvement in MSE
-print("Mean Square Error: ",mse_yh_str)
+mse = {} # og, zfe, lms, zfe_i, lms_i
+dec = 4
+mse['og'] = ((xm[10:] - y[10:])**2).mean()
+mse['zfe'] = ((xm[10:] - yh_zfe[10:])**2).mean()
+mse['lms'] = ((xm[10:] - yh_lms[10:])**2).mean()
+mse['og_str'] = str(round(mse['og'],dec))
+mse['zfe_str'] = str(round(mse['zfe'],dec))
+mse['lms_str'] = str(round(mse['lms'],dec))
+mse['zfe_i_str'] = str(round(mse['og']/mse['zfe'],dec))
+mse['lms_i_str'] = str(round(mse['og']/mse['lms'],dec))
+
+print("Mean Square Error (OG) : " + mse['og_str'])
+print("Mean Square Error (ZFE): " + mse['zfe_str'])
+print("----- improved by -----> " + mse['zfe_i_str'])
+print("Mean Square Error (LMS): " + mse['lms_str'])
+print("----- improved by -----> " + mse['lms_i_str'])
 
 plt.subplot(7,1,7)
 
-plt.title("Equalized waveform (channel^-1) (MSE="+mse_yh_str+")")
-plt.plot(t,yh)
+plt.title("Equalized waveforms (MSE(OG)="+mse['og_str']+"_)")
+plt.plot(t,yh_zfe,label="ZFE (MSE="+mse['zfe_str']+")")
+plt.plot(t,yh_lms,label="LMS (MSE="+mse['lms_str']+")")
+plt.legend()
 
 ######################################################################
 # Plot spectrum of transmitted signal, received signal, and equalized
@@ -136,9 +170,13 @@ plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="Tx")
 yf = fftpack.fft(y)
 plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="Rx (MSE1="+mse_y_str+")")
 
-# equalized signal
-yf = fftpack.fft(yh)
-plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="EQ(Rx) (MSE2="+mse_yh_str+"), MSE1/MSE2="+mse_i_str)
-plt.legend()
+# equalized signal (ZFE)
+yf = fftpack.fft(yh_zfe)
+plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="ZFE(Rx): MSE(ZFE)="+mse['zfe_str'])
 
+# equalized signal (ZFE)
+yf = fftpack.fft(yh_lms)
+plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="LMS(Rx): MSE(LMS)="+mse['lms_str'])
+
+plt.legend()
 plt.show()
