@@ -1,3 +1,5 @@
+import sys
+sys.path.append('../')
 import equalizer.util.offline as offline
 import numpy as np
 
@@ -12,7 +14,8 @@ data_size = 1      # number of packets
 train_snr = 20     # channel SNR
 
 # LMS parameters
-mu = 0.01 # step size
+mu = 0.001 # step size
+order = 15 # num FIR taps
 
 """
 Compute nth-step lms output
@@ -55,9 +58,8 @@ if __name__ == "__main__":
         x[i] = np.real(x[i]*np.exp(1j*i))
         d[i] = np.real(d[i]*np.exp(1j*i))
 
-    # init weights to zero (Nx2 since working w/ complex symbols)
-    #w = np.zeros(model_tap_size)
-    w = np.array([.1,.1])
+    # init weights to random real values
+    w = np.array(np.random.normal(0,1,order)) + 1j*np.array(np.random.normal(0,1,order));
 
     # init empty array for equalized symbols
     y = np.zeros(pream_size)
@@ -66,11 +68,11 @@ if __name__ == "__main__":
     # compute N tap FIR
     #
     # iterate through symbols in a single packet
-    for i in range(model_tap_size - 1, x.shape[0]):
+    for i in range(order - 1, x.shape[0]):
         # apply the FIR to get current output
-        y[i] = x[(i - (model_tap_size - 1)):(i + 1)].T @ w
+        y[i] = x[(i - (order - 1)):(i + 1)].T @ w
         # compute latest error
         e = d[i] - y[i] # cost / error
         # update weights
-        w = w - mu*e*y[i-1:i+1]
+        w = w - mu*e*y[(i - (order - 1)):(i + 1)]
         print("d[i]=",d[i],",y[i]=",y[i],",e[i]=",e,",w=",w)
