@@ -53,9 +53,9 @@ plt.title("Modulated Waveform")
 ######################################################################
 # Create and visualize the channel
 ######################################################################
-ct = [.25, -.1] # channel taps
+ct = [-.25, -.1] # channel taps
 
-channel = signal.dlti([.25, -.1], [1, 0], dt=Ts)
+channel = signal.dlti([ct[0], ct[1]], [1, 0], dt=Ts)
 t2, channel_imp = channel.impulse()
 w, mag, phase = channel.bode()
 
