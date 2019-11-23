@@ -23,17 +23,14 @@ x = np.array([0,0,0,1,1,0,0,1,0,0,0,1,0,1,0,0,0,0,1,0,1,1,0,0,1,0,1,0,
     0,0,1,1,0,1,1,0,0,0,0,1,0,1,1,0,0,0,1,0,0,1,1,0,0,1,0,1,0,0,0,0,1,
     1,1,0,1,1,1,1,0,0,0,1,0,0,0,0,1,1,1,1,0,0,1,0,1,0,0,0,0,1,1,1,1,0,
     0,1,0,0,1,1,1,1,0,1,1,1,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,0])
-print("x:",x)
 
 # create time sequence
 t = np.linspace(1,x.shape[0]*fb,x.shape[0]*fb)*Ts
-print("t:",t)
 
 # upsample binary sequence
 xu_vector = np.array([np.ones(int(1/Ts))*i for i in x])
 # entries in xu_vector are vectors of N of the same bit values from x
 xu = xu_vector.flatten()
-print("xu:",xu)
 
 plt.subplot(7,1,1)
 plt.plot(t,xu)
@@ -41,12 +38,10 @@ plt.title("Binary sequence")
 
 ## encode with NRZ (0 -> -1, 1 -> 1)
 #xe = np.array([i - int(i==0) for i in xu])
-#print("xe:",xe)
 
 # modulate with BPSK
 xm = np.cos(2*np.pi*fc*t + np.pi*xu)
 #xm = np.cos(np.pi*t)
-print("xm:",xm)
 
 plt.subplot(7,1,3)
 plt.plot(t,xm)
