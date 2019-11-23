@@ -83,12 +83,16 @@ for i in range(1, xm.shape[0]):
 
 mu = 0
 sigma = 1
+# @TODO parameterize awgn in terms of SNR
 y = y_clean + .1*np.random.normal(mu, sigma, y_clean.shape[0])
+
+mse_y = ((xm[10:] - y[10:])**2).mean()
+mse_y_str = str(round(mse_y,5))
 
 plt.figure(1)
 plt.subplot(7,1,5)
 plt.plot(t,y)
-plt.title("Received Waveform (channel + awgn)")
+plt.title("Received Waveform (channel + awgn) (MSE=" + mse_y_str + ")")
 
 ######################################################################
 # Test perturbing estimation of channel
@@ -109,13 +113,14 @@ for i in range(1, y.shape[0]):
 ######################################################################
 # @note offset the sequences so mean isn't computed based on edge
 #       conditions (e.g. filter time delay)
-mse = ((xm[10:] - yh[10:])**2).mean()
-mse_str = str(round(mse,5))
-print("Mean Square Error: ",mse)
+mse_yh = ((xm[10:] - yh[10:])**2).mean()
+mse_yh_str = str(round(mse_yh,5))
+mse_i_str = str(round(mse_y/mse_yh,5)) # improvement in MSE
+print("Mean Square Error: ",mse_yh_str)
 
 plt.subplot(7,1,7)
 
-plt.title("Equalized waveform (channel^-1) (MSE="+mse_str+")")
+plt.title("Equalized waveform (channel^-1) (MSE="+mse_yh_str+")")
 plt.plot(t,yh)
 
 ######################################################################
@@ -134,11 +139,11 @@ plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="Tx")
 
 # received signal
 yf = fftpack.fft(y)
-plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="Rx")
+plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="Rx (MSE1="+mse_y_str+")")
 
 # equalized signal
 yf = fftpack.fft(yh)
-plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="EQ(Rx) (MSE="+mse_str+")")
+plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="EQ(Rx) (MSE2="+mse_yh_str+"), MSE1/MSE2="+mse_i_str)
 plt.legend()
 
 plt.show()
