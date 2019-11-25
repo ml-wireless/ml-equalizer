@@ -2,6 +2,8 @@ import sys
 sys.path.append('../')
 import equalizer.util.offline as offline
 import numpy as np
+from matplotlib import pyplot as plt
+from scipy import signal, fftpack
 
 # LEFT OFF: Don't fully understand what the cost is and how to take its gradient. Also not sure how to apply a filter to IQ symbols (so tried converting them to amplitude samples). Current status is that it doesn't converge and is unstable / can explode to infinity for some intiial states
 
@@ -14,8 +16,8 @@ data_size = 1      # number of packets
 train_snr = 20     # channel SNR
 
 # LMS parameters
-mu = 0.001 # step size
-order = 15 # num FIR taps
+mu = 0.01 # step size
+order = 5 # num FIR taps
 
 """
 Compute nth-step lms output
@@ -63,6 +65,8 @@ if __name__ == "__main__":
 
     # init empty array for equalized symbols
     y = np.zeros(pream_size)
+    e = np.zeros(pream_size)
+    ndx = np.linspace(1,pream_size,pream_size)
 
     # @note we start late since we need N-1 symbols of the past to
     # compute N tap FIR
@@ -72,7 +76,24 @@ if __name__ == "__main__":
         # apply the FIR to get current output
         y[i] = x[(i - (order - 1)):(i + 1)].T @ w
         # compute latest error
-        e = d[i] - y[i] # cost / error
+        e[i] = d[i] - y[i] # cost / error
         # update weights
-        w = w - mu*e*y[(i - (order - 1)):(i + 1)]
-        print("d[i]=",d[i],",y[i]=",y[i],",e[i]=",e,",w=",w)
+        w = w + mu*e[i]*x[(i - (order - 1)):(i + 1)]
+        #print("d[i]=",d[i],",y[i]=",y[i],",e[i]=",e,",w=",w)
+
+    plt.subplot(7,1,1).set_xlabel("symbol index")
+    plt.title("Desired Preamble")
+    plt.plot(ndx,d)
+
+    plt.subplot(7,1,3).set_xlabel("symbol index")
+    plt.title("Received Preamble")
+    plt.plot(ndx,x)
+
+    plt.subplot(7,1,5).set_xlabel("symbol index")
+    plt.title("Equalized Preamble")
+    plt.plot(ndx,y)
+
+    plt.subplot(7,1,7).set_xlabel("symbol index")
+    plt.title("LMS Error")
+    plt.plot(ndx,e)
+    plt.show()
