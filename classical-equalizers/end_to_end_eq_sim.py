@@ -2,7 +2,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy import signal, fftpack
 
-plt.figure(1)
+plt.figure(2) # channel characteristics on bottom
+plt.figure(3) # spectrum second
+plt.figure(1) # waveform and LMS error on top
 
 # params
 Tb = 1 # time per bit (sec)
@@ -10,6 +12,8 @@ fb = 4 # samples per bit
 Ts = Tb/fb # sampling period
 fs = fb/Tb # sampling frequency
 fc = .1 # carrier frequency
+preamble_size = 120 # determines point after which MSE is computed
+preamble_samples = preamble_size*fb
 
 assert(fc <= (fs/2)) # nyquist
 
@@ -24,6 +28,8 @@ x = np.array([0,0,0,1,1,0,0,1,0,0,0,1,0,1,0,0,0,0,1,0,1,1,0,0,1,0,1,0,
     1,1,0,1,1,1,1,0,0,0,1,0,0,0,0,1,1,1,1,0,0,1,0,1,0,0,0,0,1,1,1,1,0,
     0,1,0,0,1,1,1,1,0,1,1,1,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,0])
 
+assert(preamble_size < x.shape[0])
+
 # create time sequence
 t = np.linspace(1,x.shape[0]*fb,x.shape[0]*fb)*Ts
 
@@ -32,7 +38,7 @@ xu_vector = np.array([np.ones(int(1/Ts))*i for i in x])
 # entries in xu_vector are vectors of N of the same bit values from x
 xu = xu_vector.flatten()
 
-plt.subplot(9,1,1)
+plt.subplot(9,1,1).set_xlabel("t")
 plt.plot(t,xu)
 plt.title("Binary sequence")
 
@@ -43,7 +49,7 @@ plt.title("Binary sequence")
 xm = np.cos(2*np.pi*fc*t + np.pi*xu)
 #xm = np.cos(np.pi*t)
 
-plt.subplot(9,1,3)
+plt.subplot(9,1,3).set_xlabel("t")
 plt.plot(t,xm)
 plt.title("Modulated Waveform")
 
@@ -80,13 +86,13 @@ mu = 0
 sigma = 1
 # @TODO parameterize awgn in terms of SNR
 # @TODO put awgn back into channel output once LMS works w/o
-y = y_clean# + .1*np.random.normal(mu, sigma, y_clean.shape[0])
+y = y_clean + .08*np.random.normal(mu, sigma, y_clean.shape[0])
 
 mse_y = ((xm[10:] - y[10:])**2).mean()
 mse_y_str = str(round(mse_y,5))
 
 plt.figure(1)
-plt.subplot(9,1,5)
+plt.subplot(9,1,5).set_xlabel("t")
 plt.plot(t,y)
 plt.title("Received Waveform (channel + awgn) (MSE=" + mse_y_str + ")")
 
@@ -105,25 +111,24 @@ for i in range(1, y.shape[0]):
 
 ######################################################################
 # Test LMS with learned channel
-# @TODO Fix the cost function for updating weights
 ######################################################################
 yh_lms = np.zeros(y.shape[0])
 
-mu = 0.001 # step size
-N = 15      # order
-#w = np.array(.1*np.ones(N)) # .1 is an arbitrary non-zero value
-#w = np.random.normal(0,1,N) # N rand weights
+mu = .095 # step size
+N = 5    # order
 w = np.zeros(N) # N rand weights
 d = xm # alias for readability
 e = np.zeros(y.shape[0])
 
 for i in range(N-1, y.shape[0]):
-    # apply FIR to get current output sample
+    # apply LMS FIR to get current output sample
     yh_lms[i] = y[(i-(N-1)):(i+1)].T @ w
     # compute latest error
     e[i] = d[i] - yh_lms[i]
-    # update weights accordingly
-    w = w + mu*e[i]*y[(i-(N-1)):(i+1)]
+    # only run LMS over preamble, stop learning after preamble
+    if (i-(N-1) < preamble_samples):
+        # update weights accordingly
+        w = w + mu*e[i]*y[(i-(N-1)):(i+1)]
 
 ######################################################################
 # Compute MSE between transmitted waveform and equalized waveforms
@@ -132,9 +137,10 @@ for i in range(N-1, y.shape[0]):
 #       conditions (e.g. filter time delay)
 mse = {} # og, zfe, lms, zfe_i, lms_i
 dec = 4
-mse['og'] = ((xm[10:] - y[10:])**2).mean()
-mse['zfe'] = ((xm[10:] - yh_zfe[10:])**2).mean()
-mse['lms'] = ((xm[10:] - yh_lms[10:])**2).mean()
+start = preamble_samples # start sample
+mse['og'] = ((xm[start:] - y[start:])**2).mean()
+mse['zfe'] = ((xm[start:] - yh_zfe[start:])**2).mean()
+mse['lms'] = ((xm[start:] - yh_lms[start:])**2).mean()
 mse['og_str'] = str(round(mse['og'],dec))
 mse['zfe_str'] = str(round(mse['zfe'],dec))
 mse['lms_str'] = str(round(mse['lms'],dec))
@@ -149,19 +155,22 @@ print("----- improved by -----> " + mse['lms_i_str'])
 
 plt.figure(1)
 
-plt.subplot(9,1,7)
-plt.title("Equalized waveforms (MSE(OG)="+mse['og_str']+"_)")
-plt.plot(t,yh_zfe,label="ZFE (MSE="+mse['zfe_str']+")")
-plt.plot(t,yh_lms,label="LMS (MSE="+mse['lms_str']+")")
+plt.subplot(9,1,7).set_xlabel("t")
+plt.title("Equalized waveforms (MSE(OG)="+mse['og_str']+")")
+plt.plot(t,yh_zfe,label="ZFE")
+plt.plot(t,yh_lms,label="LMS")
 plt.legend()
 
 mngr = plt.get_current_fig_manager()
-mngr.window.setGeometry(1000,100,640, 545)
+mngr.window.setGeometry(100,100,1200, 900)
 
-# show the LMS error here too
-plt.subplot(9,1,9)
-plt.title("LMS error")
-plt.plot(t,e)
+# show the LMS and ZFE error here too
+plt.subplot(9,1,9).set_xlabel("t")
+plt.title("ZFE (MSE="+mse['zfe_str']+" i-by=" + mse['zfe_i_str'] + "x) and LMS (MSE="+mse['lms_str']+" i-by=" + mse['lms_i_str'] + "x) error")
+plt.plot(t,d-yh_zfe, label="ZFE") # ZFE
+plt.plot(t,e, label="LMS (PreT=" + str(preamble_samples*Ts) + ", PreSym=" + str(preamble_size) + ")") # LMS
+plt.legend()
+
 
 ######################################################################
 # Plot spectrum of transmitted signal, received signal, and equalized
@@ -189,9 +198,5 @@ plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="ZFE(Rx): MSE(ZFE)="+mse['zfe_str'
 yf = fftpack.fft(yh_lms)
 plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="LMS(Rx): MSE(LMS)="+mse['lms_str'])
 plt.legend()
-
-######################################################################
-# Plot LMS performance
-######################################################################
 
 plt.show()
