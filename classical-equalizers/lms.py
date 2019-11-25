@@ -81,19 +81,20 @@ if __name__ == "__main__":
         w = w + mu*e[i]*x[(i - (order - 1)):(i + 1)]
         #print("d[i]=",d[i],",y[i]=",y[i],",e[i]=",e,",w=",w)
 
-    plt.subplot(7,1,1).set_xlabel("symbol index")
-    plt.title("Desired Preamble")
-    plt.plot(ndx,d)
+    start = ndx.shape[0]-100
 
-    plt.subplot(7,1,3).set_xlabel("symbol index")
-    plt.title("Received Preamble")
-    plt.plot(ndx,x)
+    plt.subplot(3,1,1).set_xlabel("symbol index")
+    plt.title("Desired & Equalized Preamble")
+    plt.plot(ndx[start:],d[start:],label="desired")
+    plt.plot(ndx[start:],y[start:],label="equalized")
+    plt.plot(ndx[start:],x[start:],label="received")
+    plt.legend()
 
-    plt.subplot(7,1,5).set_xlabel("symbol index")
-    plt.title("Equalized Preamble")
-    plt.plot(ndx,y)
+    #plt.subplot(5,1,3).set_xlabel("symbol index")
+    #plt.title("Received Preamble")
+    #plt.plot(ndx[start:],x[start:])
 
-    plt.subplot(7,1,7).set_xlabel("symbol index")
+    plt.subplot(3,1,3).set_xlabel("symbol index")
     plt.title("LMS Error")
     plt.plot(ndx,e)
     plt.show()
