@@ -32,7 +32,7 @@ xu_vector = np.array([np.ones(int(1/Ts))*i for i in x])
 # entries in xu_vector are vectors of N of the same bit values from x
 xu = xu_vector.flatten()
 
-plt.subplot(7,1,1)
+plt.subplot(9,1,1)
 plt.plot(t,xu)
 plt.title("Binary sequence")
 
@@ -43,7 +43,7 @@ plt.title("Binary sequence")
 xm = np.cos(2*np.pi*fc*t + np.pi*xu)
 #xm = np.cos(np.pi*t)
 
-plt.subplot(7,1,3)
+plt.subplot(9,1,3)
 plt.plot(t,xm)
 plt.title("Modulated Waveform")
 
@@ -86,7 +86,7 @@ mse_y = ((xm[10:] - y[10:])**2).mean()
 mse_y_str = str(round(mse_y,5))
 
 plt.figure(1)
-plt.subplot(7,1,5)
+plt.subplot(9,1,5)
 plt.plot(t,y)
 plt.title("Received Waveform (channel + awgn) (MSE=" + mse_y_str + ")")
 
@@ -112,16 +112,18 @@ yh_lms = np.zeros(y.shape[0])
 mu = 0.001 # step size
 N = 15      # order
 #w = np.array(.1*np.ones(N)) # .1 is an arbitrary non-zero value
-w = np.random.normal(0,1,N) # N rand weights
+#w = np.random.normal(0,1,N) # N rand weights
+w = np.zeros(N) # N rand weights
 d = xm # alias for readability
+e = np.zeros(y.shape[0])
 
 for i in range(N-1, y.shape[0]):
     # apply FIR to get current output sample
     yh_lms[i] = y[(i-(N-1)):(i+1)].T @ w
     # compute latest error
-    e = d[i] - yh_lms[i]
+    e[i] = d[i] - yh_lms[i]
     # update weights accordingly
-    w = w - mu*e*yh_lms[(i-(N-1)):(i+1)]
+    w = w + mu*e[i]*y[(i-(N-1)):(i+1)]
 
 ######################################################################
 # Compute MSE between transmitted waveform and equalized waveforms
@@ -145,12 +147,21 @@ print("----- improved by -----> " + mse['zfe_i_str'])
 print("Mean Square Error (LMS): " + mse['lms_str'])
 print("----- improved by -----> " + mse['lms_i_str'])
 
-plt.subplot(7,1,7)
+plt.figure(1)
 
+plt.subplot(9,1,7)
 plt.title("Equalized waveforms (MSE(OG)="+mse['og_str']+"_)")
 plt.plot(t,yh_zfe,label="ZFE (MSE="+mse['zfe_str']+")")
 plt.plot(t,yh_lms,label="LMS (MSE="+mse['lms_str']+")")
 plt.legend()
+
+mngr = plt.get_current_fig_manager()
+mngr.window.setGeometry(1000,100,640, 545)
+
+# show the LMS error here too
+plt.subplot(9,1,9)
+plt.title("LMS error")
+plt.plot(t,e)
 
 ######################################################################
 # Plot spectrum of transmitted signal, received signal, and equalized
@@ -177,6 +188,10 @@ plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="ZFE(Rx): MSE(ZFE)="+mse['zfe_str'
 # equalized signal (ZFE)
 yf = fftpack.fft(yh_lms)
 plt.plot(xf, 2.0/N * np.abs(yf[:N//2]), label="LMS(Rx): MSE(LMS)="+mse['lms_str'])
-
 plt.legend()
+
+######################################################################
+# Plot LMS performance
+######################################################################
+
 plt.show()
