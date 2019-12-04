@@ -123,3 +123,22 @@ def train_e2e(model, inputs, output, loss_func, train_size, batch_size, epoch, s
         print('save complete')
     
     return np.array(train_loss), np.array(test_loss)
+
+def eval_e2e(model, pream_size, payload_size, tap_size, snr, eval_size, batch_size=None, silent=True):
+    if batch_size == None:
+        batch_size = eval_size
+    
+    batches = eval_size // batch_size
+    it = range(batches)
+    if not silent:
+        it = tqdm(it)
+    ber = 0
+    for _ in it:
+        pream, pream_recv, payload_recv, label = gen_ktap(batch_size, pream_size, tap_size, snr, payload_size)
+
+        model.update_preamble(pream, pream_recv)
+        payload_est = model.estimate(payload_recv)
+
+        label_est = demod_qpsk(payload_est)
+        ber += bit_error_rate(label_est, label, 2)
+    return ber / batches
