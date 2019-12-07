@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import equalizer.util.offline as offline
-from equalizer.model.classic import ZeroForcing, MMSE1
+from equalizer.model.classic import ZeroForcing, MMSE1, MMSE2, ClassicTap
 from equalizer.model.tap import TapEstimator
 from tqdm import tqdm
 
@@ -24,10 +24,11 @@ eval_dat = 'figure/zf-mmse-ber.dat'
 if __name__ == "__main__":
     est = TapEstimator(pream_size, model_tap_size)
     est.load_state_dict(torch.load(est_path))
-    zf = ZeroForcing(est, expand=expand, trunc=order, eps=eps)
-    mmse = MMSE1(order)
+    zf = ClassicTap(est, ZeroForcing, expand=expand, trunc=order, eps=eps)
+    mmse1 = MMSE1(order)
+    mmse2 = ClassicTap(est, MMSE2)
 
-    models = [zf, mmse]
+    models = [zf, mmse1, mmse2]
     bers = [ eval_snr ]
     for model in models:
         bers.append(list(offline.eval_e2e(zf, pream_size, payload_size, model_tap_size, snr, eval_size) for snr in tqdm(eval_snr)))
