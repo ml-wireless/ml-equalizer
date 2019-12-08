@@ -29,6 +29,11 @@ class TapEstimator(nn.Module):
             else:
                 x = torch.relu(x)
         return x
+    
+    def estimate_tap(self, pream, pream_recv):
+        self.eval()
+        pream, pream_recv = offline.apply_list(offline.to_torch, pream, pream_recv)
+        return offline.to_numpy(self.forward(pream, pream_recv))
 
 class TapEqualizer(nn.Module):
     def __init__(self, tap_size, hidden_size=45, dense_size=200, layers=2):

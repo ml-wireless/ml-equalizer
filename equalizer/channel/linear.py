@@ -91,7 +91,7 @@ def awgn_proc(snr, x):
     noise = noise * np.random.randn(*shapes)
     return x + noise
 
-def inverse_tap_fft(a, expand, trunc, eps):
+def inverse_tap_fft(a, expand, trunc, eps=0):
     """
     inverse a tap using FFT:
     a ->(DFT) A -> 1/(A+eps) ->(IDFT) b
@@ -99,6 +99,8 @@ def inverse_tap_fft(a, expand, trunc, eps):
     `expand`: length to expand a, should be power of 2
     `trunc`: truncate to produce b
     `eps`: eps
+
+    NOTE: assume real tap now
     """
     width = a.shape[-1]
     pad_left = expand // 2 - (width - 1) // 2

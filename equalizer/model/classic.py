@@ -12,29 +12,33 @@ class ZeroForcing(object):
     def estimate(self, recv):
         return tap_proc(self.inv, recv)
 
-def mmse1(recv, pream, order):
+def mmse1(recv, pream, order, eps=0):
     """
     mmse with unknown channel
     recv: received signal, (*, k, 2)
     pream: sent signal, (*, k, 2)
     order: order of the filter
-    returns: (*, 2 * order + 1) dtype=np.complex_, the inverse filter
+    returns: (*, order), the inverse filter
+
+    NOTE: assume real tap
     """
     temp_pream = pream[..., 0] + pream[..., 1] * 1j
     temp_recv = recv[..., 0] + recv[..., 1] * 1j
-    temp_recv = np.pad(temp_recv, ((0, 0),) * (temp_recv.ndim - 1) + ((order, order),), 'constant')
+    rpad = (order - 1) // 2
+    lpad = order - 1 - rpad
+    temp_recv = np.pad(temp_recv, ((0, 0),) * (temp_recv.ndim - 1) + ((lpad, rpad),), 'constant')
 
-    R = np.zeros(temp_recv.shape[:-1] + (2 * order + 1, 2 * order + 1), dtype=np.complex_)
-    d = np.zeros(temp_recv.shape[:-1] + (2 * order + 1,), dtype=np.complex_)
-    for i in range(order, recv.shape[1]+order):
-        Ri = temp_recv[..., i-order:i+order+1]
-        R += np.expand_dims(Ri, -2) * np.expand_dims(Ri, -1)
-        d += temp_pream[..., i-order:i-order+1] * Ri
-    return np.flip(np.linalg.solve(R, d), -1)
+    R = np.zeros(temp_recv.shape[:-1] + (order, order), dtype=np.complex_)
+    d = np.zeros(temp_recv.shape[:-1] + (order,), dtype=np.complex_)
+    for i in range(recv.shape[-2]):
+        Ri = temp_recv[..., i:i+order]
+        R += np.real(np.expand_dims(Ri, -2).conj() * np.expand_dims(Ri, -1))
+        d += np.real(temp_pream[..., i:i+1] * Ri.conj())
+    return np.flip(np.linalg.solve(R + np.eye(order) * eps, d), -1)
 
 class MMSEInverse(object):
     def __init__(self, order, algo=mmse1):
-        self.algo = lambda s, r: im_tap(algo(r, s, order))
+        self.algo = lambda s, r: real_tap(algo(r, s, order))
     
     def update_preamble(self, pream, pream_recv):
         self.inv = self.algo(pream, pream_recv)
@@ -44,16 +48,13 @@ class MMSEInverse(object):
 
 class MMSEEstimator(object):
     def __init__(self, order, algo=mmse1):
-        self.algo = lambda s, r: im_tap(algo(r, s, order))
+        self.algo = lambda s, r: algo(r, s, order)
     
-    def update_preamble(self, pream, pream_recv):
-        self.tap = self.algo(pream_recv, pream)
-
-    def estimate(self, recv):
-        return tap_proc(self.inv, recv)
+    def estimate_tap(self, pream, pream_recv):
+        return self.algo(pream_recv, pream)
 
 # mmse with known channel
-def mmse2(recv, tap):
+def mmse2(recv, tap, eps=0.01):
     temp_recv = (recv[..., 0] + recv[..., 1]*1j)
     recv_len = temp_recv.shape[-1]
     H = np.zeros(temp_recv.shape[:-1] + (recv_len, recv_len), dtype=tap.dtype)
@@ -65,11 +66,12 @@ def mmse2(recv, tap):
         st1 = max(0, st)
         ed1 = min(recv_len, ed)
         H[..., i, st1:ed1] = tap[..., st1-st:tap_len+ed1-ed]
-    A = np.einsum('...ki,...kj->...ij', H, H.conj())
+    A = np.einsum('...ki,...kj->...ij', H, H.conj()) + eps * np.eye(recv_len)
     b = np.einsum('...ji,...j->...i', H.conj(), temp_recv)
-    return np.linalg.solve(A, b)
+    ret = np.linalg.solve(A, b)
+    return ret
 
-class MMSE2(object):
+class MMSEEqualizer(object):
     def __init__(self, algo=mmse2):
         self.algo = algo
 
@@ -85,9 +87,8 @@ class ClassicTap(object):
         self.eq = eq(**params)
     
     def update_preamble(self, pream, pream_recv):
-        self.est.eval()
-        pream, pream_recv = offline.apply_list(offline.to_torch, pream, pream_recv)
-        self.eq.update_tap(offline.to_numpy(self.est.forward(pream, pream_recv)))
+        tap = self.est.estimate_tap(pream, pream_recv)
+        self.eq.update_tap(tap)
     
     def estimate(self, recv):
         return self.eq.estimate(recv)
