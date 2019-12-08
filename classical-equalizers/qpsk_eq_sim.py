@@ -33,9 +33,10 @@ x = np.array([0,0,1,1,1,0,0,1,0,0,0,1,0,1,0,0,0,0,1,0,1,1,0,0,1,0,1,0,
     0,1,0,0,1,1,1,1,0,1,1,1,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,0,
     0,0,1,0,0,1,1,0,1,1,1,1,0,1,0,1,0,1,1,0,1,1,1,1,1,1,0,1,1,0,1,0,0,
     1,1,1,0,1,1,1,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,1,0,0,
-    0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,1,0,0,1,0,1,1,1,1,1,1,0,1,1,0,1,0])
+    0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,1,0,0,1,0,1,1,1,1,1,1,0,1,1,0,1,0,1])
 
 assert(preamble_size < x.shape[0])
+assert(x.shape[0] % 2 == 0)
 
 #temporary padding
 if len(x)%2==1:
@@ -55,7 +56,15 @@ plt.title("Binary sequence")
 
 ## encode with NRZ (0 -> -1, 1 -> 1)
 #xe = np.array([i - int(i==0) for i in xu])
-qpsk_phase = 1 + x[::2] + 2**x[1::2]
+
+# modulate with QPSK
+qpsk_phase = np.zeros(int(x.shape[0] / 2))
+mod_map = { 0: 0, 1: 1, 10: 2, 11: 3}
+
+for i in range(0,int(x.shape[0]/2)):
+    # map bit pairs to symbols
+    qpsk_phase[i] = mod_map[x[i*2]*10 + x[i*2+1]]
+
 t = np.linspace(1,qpsk_phase.shape[0]*fb,qpsk_phase.shape[0]*fb)*Ts
 up_qpsk_phase = np.array([np.ones(int(1/Ts))*i for i in qpsk_phase]).flatten()
 xm = np.cos(2*np.pi*fc*t + np.pi*(2*up_qpsk_phase - 1)/4)
