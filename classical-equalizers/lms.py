@@ -17,7 +17,7 @@ train_snr = 20     # channel SNR
 
 # LMS parameters
 mu = 0.01 # step size
-order = 5 # num FIR taps
+order = 20 # num FIR taps
 
 """
 Compute nth-step lms output
@@ -91,7 +91,12 @@ if __name__ == "__main__":
 
     plt.subplot(3,1,3).set_xlabel("symbol index")
     plt.title("LMS Error")
-    plt.plot(ndx,e)
+    plt.plot(ndx,e.real,label="real")
+    plt.plot(ndx,e.imag,label="imag")
+    plt.legend()
+
+    channel = signal.dlti([tap[0][0], tap[0][1]], [1, 0])
+    print(channel.to_zpk())
 
     plt.figure(2)
     mngr = plt.get_current_fig_manager()
