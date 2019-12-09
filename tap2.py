@@ -6,18 +6,16 @@ from equalizer.model.tap import TapEstimator, TapEqualizer, NeuralTap
 from tqdm import tqdm
 
 # common parameters
-pream_size = 50
+pream_size = 40
 model_tap_size = 2
 batch_size = 200
 est_path = 'model/tap2-est.bin'
 eq_path = 'model/tap2-eq.bin'
 
 # train parameters
-data_size = 50000
-train_snr = 20
-train_size = 40000
-est_dat = 'figure/tap2-est.png'
-eq_dat = 'figure/tap2-eq.png'
+data_size = 100000
+train_snr = 10
+train_size = 80000
 
 # eval parameters
 eval_size = 10000

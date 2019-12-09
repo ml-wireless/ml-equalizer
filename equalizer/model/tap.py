@@ -27,11 +27,11 @@ class TapEstimator(nn.Module):
             if i == len(self.fcs) - 1:
                 x = torch.tanh(x)
             else:
-                x = torch.sigmoid(x)
+                x = torch.relu(x)
         return x
 
 class TapEqualizer(nn.Module):
-    def __init__(self, tap_size, hidden_size=45, dense_size=100, layers=2):
+    def __init__(self, tap_size, hidden_size=45, dense_size=200, layers=2):
         super(TapEqualizer, self).__init__()
         self.rnn = nn.LSTM(2 + tap_size, hidden_size, layers, batch_first=True, bidirectional=True)
         self.fc1 = nn.Linear(2 * hidden_size, dense_size)
