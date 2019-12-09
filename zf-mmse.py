@@ -8,7 +8,6 @@ from tqdm import tqdm
 # common parameters
 pream_size = 40
 model_tap_size = 2
-est_path = 'model/tap2-est.bin'
 
 # model parameters
 order = 31
