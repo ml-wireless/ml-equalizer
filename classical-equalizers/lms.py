@@ -55,17 +55,12 @@ if __name__ == "__main__":
     x = x[:,0]+1j*x[:,1]
     d = d[:,0]+1j*d[:,1]
 
-    # convert complex symbols to real amplitude samples
-    for i in range(0,x.shape[0]):
-        x[i] = np.real(x[i]*np.exp(1j*i))
-        d[i] = np.real(d[i]*np.exp(1j*i))
-
     # init weights to random real values
     w = np.array(np.random.normal(0,1,order)) + 1j*np.array(np.random.normal(0,1,order));
 
     # init empty array for equalized symbols
-    y = np.zeros(pream_size)
-    e = np.zeros(pream_size)
+    y = 0j*np.zeros(pream_size)
+    e = 0j*np.zeros(pream_size)
     ndx = np.linspace(1,pream_size,pream_size)
 
     # @note we start late since we need N-1 symbols of the past to
@@ -78,7 +73,7 @@ if __name__ == "__main__":
         # compute latest error
         e[i] = d[i] - y[i] # cost / error
         # update weights
-        w = w + mu*e[i]*x[(i - (order - 1)):(i + 1)]
+        w = w + mu*e[i]*x[(i - (order - 1)):(i + 1)].conj()
         #print("d[i]=",d[i],",y[i]=",y[i],",e[i]=",e,",w=",w)
 
     start = ndx.shape[0]-100
@@ -97,4 +92,14 @@ if __name__ == "__main__":
     plt.subplot(3,1,3).set_xlabel("symbol index")
     plt.title("LMS Error")
     plt.plot(ndx,e)
+
+    plt.figure(2)
+    mngr = plt.get_current_fig_manager()
+    mngr.window.setGeometry(700,100,600,600)
+
+    plt.title("Received & equalized symbols")
+    plt.scatter(x[start:].real,x[start:].imag,label="received")
+    plt.scatter(y[start:].real,y[start:].imag,label="equalized")
+    plt.legend()
+
     plt.show()
