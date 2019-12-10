@@ -4,7 +4,7 @@ import equalizer.util.offline as offline
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy import signal, fftpack
-from lms import lms_model
+from lms_eq import lms_model
 
 # LEFT OFF: Don't fully understand what the cost is and how to take its gradient. Also not sure how to apply a filter to IQ symbols (so tried converting them to amplitude samples). Current status is that it doesn't converge and is unstable / can explode to infinity for some intiial states
 
