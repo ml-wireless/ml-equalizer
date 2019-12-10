@@ -28,7 +28,7 @@ def predict(signal, w, order):
     #     y[i] = signal[(i - (order - 1)):(i + 1)].T @ w
 
     #np.convolve flips slider
-    return np.convolve(signal, np.flip(w), mode='full')[:-(order-1)]
+    return np.convolve(signal, np.flip(w), mode='full')[:sginal.shape[0]]
 
 
 class lms_model(object):
