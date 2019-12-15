@@ -31,17 +31,30 @@ def gen_qpsk(batch_size, seq_size):
     data = data / np.sqrt(2)
     return data, label
 
-def gen_ktap(batch_size, seq_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel):
-    pream, _ = mod(batch_size, seq_size)
+def gen_ktap(batch_size, pream_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel):
+    """
+    generate ktap data
+    if pream_size <= 0 and payload_size > 0, return payload_recv, tap, label
+    if payload_size <= 0 and pream_size > 0, return pream, tap, pream_recv
+    if both > 0, return pream, pream_recv, payload_recv, label
+    """
     ch = channel(tap_size, snr)
     tap = ch.generateParameters(batch_size)
-    pream_recv = ch.process(tap, pream)
+
+    if pream_size > 0:
+        pream, _ = mod(batch_size, pream_size)
+        pream_recv = ch.process(tap, pream)
+    
+    if payload_size > 0:
+        payload, label = mod(batch_size, payload_size)
+        payload_recv = ch.process(tap, payload)
+        
     if payload_size <= 0:
         return pream, tap, pream_recv
-    payload, label = mod(batch_size, payload_size)
-    payload_recv = ch.process(tap, payload)
-    return pream, pream_recv, payload_recv, label
-
+    elif pream_size <= 0:
+        return payload_recv, tap, label
+    else:
+        return pream, pream_recv, payload_recv, label
 
 def demod_qpsk(x):
     l = 2 * (x[..., 0] > 0) + 1 * (x[..., 1] > 0)
@@ -110,3 +123,22 @@ def train_e2e(model, inputs, output, loss_func, train_size, batch_size, epoch, s
         print('save complete')
     
     return np.array(train_loss), np.array(test_loss)
+
+def eval_e2e(model, pream_size, payload_size, tap_size, snr, eval_size, batch_size=None, silent=True):
+    if batch_size == None:
+        batch_size = eval_size
+    
+    batches = eval_size // batch_size
+    it = range(batches)
+    if not silent:
+        it = tqdm(it)
+    ber = 0
+    for _ in it:
+        pream, pream_recv, payload_recv, label = gen_ktap(batch_size, pream_size, tap_size, snr, payload_size)
+
+        model.update_preamble(pream, pream_recv)
+        payload_est = model.estimate(payload_recv)
+
+        label_est = demod_qpsk(payload_est)
+        ber += bit_error_rate(label_est, label, 2)
+    return ber / batches
