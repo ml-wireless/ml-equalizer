@@ -5,7 +5,7 @@ import equalizer.util.offline as offline
 from equalizer.model.tap import CNNEstimator
 from tqdm import tqdm
 
-pream_size = 5
+pream_size = 40
 model_tap_size = 2
 batch_size = 200
 est_path = 'model/cnn-est.bin'
