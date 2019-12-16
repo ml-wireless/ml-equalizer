@@ -20,7 +20,7 @@ payload_size = 2500 # number of payload symbols
 
 # LMS parameters
 mu = 0.01 # step size
-order = 5 # num FIR taps
+order = 10 # num FIR taps
 
 #temporary function to produce labels from complex symbols
 #unsure about conversion
@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     lms = lms_model(order)
     #To eval performance over preamble, generate large preamble and use smaller slice to calculate channel inverse
-    lms.inverse_channel(d,x,mu=.1)
+    lms.inverse_channel(d,x,mu=mu)
     y = lms.estimate(x)
     e = d-y
 
@@ -101,8 +101,8 @@ if __name__ == "__main__":
     mngr.window.setGeometry(700,100,600,600)
 
     plt.title("Received & equalized symbols")
-    plt.scatter(x[start:].real,x[start:].imag,label="received")
-    plt.scatter(y[start:].real,y[start:].imag,label="equalized")
+    plt.scatter(x_payload[start:].real,x_payload[start:].imag,label="received")
+    plt.scatter(est_payload[start:].real,est_payload[start:].imag,label="equalized")
     plt.legend()
 
     plt.show()

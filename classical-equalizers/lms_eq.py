@@ -36,7 +36,7 @@ class lms_model(object):
         self.order = order
 
     def inverse_channel(self, pream, pream_recv, mu=0.1):
-        self.w = lms(pream, pream_recv, self.order, mu)
+        self.w = lms(pream_recv, pream, self.order, mu)
 
     def estimate(self, signal):
         return predict(signal, self.w, self.order)
