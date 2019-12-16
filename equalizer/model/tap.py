@@ -58,6 +58,26 @@ class TapEqualizer(nn.Module):
         x = self.fc2(x)
         return x
 
+class CNNEstimator(nn.Module):
+    def __init__(self, tap_size):
+        super(CNNEstimator, self).__init__()
+        self.conv1 = nn.Conv1d(4, 32, 3, padding=1)
+        self.conv2 = nn.Conv1d(32, 64, 3, padding=1)
+        self.fc = nn.Linear(64, tap_size)
+    
+    def forward(self, send, recv):
+        x = torch.cat((send, recv), dim=-1)
+        x = x.permute(0, 2, 1)
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = F.avg_pool1d(x, 2)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = torch.mean(x, -1)
+        x = self.fc(x)
+        x = F.tanh(x)
+        return x
+
 class NeuralTap(object):
     def __init__(self, estimator, equalizer):
         self.estimator = estimator
