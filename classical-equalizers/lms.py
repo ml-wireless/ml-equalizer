@@ -5,8 +5,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy import signal, fftpack
 
-# LEFT OFF: Don't fully understand what the cost is and how to take its gradient. Also not sure how to apply a filter to IQ symbols (so tried converting them to amplitude samples). Current status is that it doesn't converge and is unstable / can explode to infinity for some intiial states
-
 # params for channel simulator
 # @TODO change names to desriptions in comments (but everywhere else
 #       in the code too)
