@@ -31,10 +31,10 @@ def gen_qpsk(batch_size, seq_size):
     data = data / np.sqrt(2)
     return data, label
 
-def gen_ktap(batch_size, seq_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel):
+def gen_ktap(batch_size, seq_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel, min_phase=False):
     pream, _ = mod(batch_size, seq_size)
     ch = channel(tap_size, snr)
-    tap = ch.generateParameters(batch_size)
+    tap = ch.generateParameters(batch_size, min_phase)
     pream_recv = ch.process(tap, pream)
     if payload_size <= 0:
         return pream, tap, pream_recv

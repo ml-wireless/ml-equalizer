@@ -35,7 +35,7 @@ if __name__ == "__main__":
     #       batch of symbols / packet?
     # @note pream is the true preamble, recv is the received preamble
     pream, pream_recv, payload_recv, label = offline.gen_ktap(data_size,
-            pream_size, model_tap_size, train_snr, payload_size)
+            pream_size, model_tap_size, train_snr, payload_size, min_phase=True)
 
     print("pream:",pream.shape)
     print("pream:",pream)
