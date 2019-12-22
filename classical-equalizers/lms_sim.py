@@ -21,10 +21,12 @@ payload_size = 2500 # number of payload symbols
 mu = 0.01 # step size
 order = 20 # num FIR taps
 
-#temporary function to produce labels from complex symbols
-#unsure about conversion
-def temp_demod_qpsk(x):
-    l = 2 * (x[...].real > 0) + 1 * (x[...].imag > 0)
+# convert QPSK symbols to 0,1,2,3 symbols per map:
+#  1 | 3
+# ---|---
+#  0 | 2
+def demod_qpsk(x):
+    l = 2 * (x.real > 0) + 1 * (x.imag > 0)
     l = l.astype(np.int32)
     return l
 
@@ -34,18 +36,14 @@ if __name__ == "__main__":
     #       the number of symbols? Is the channel changing for each
     #       batch of symbols / packet?
     # @note pream is the true preamble, recv is the received preamble
-    pream, pream_recv, payload_recv, label = offline.gen_ktap(data_size,
+    pream, pream_recv, payload_recv, tx_label = offline.gen_ktap(data_size,
             pream_size, model_tap_size, train_snr, payload_size, min_phase=True)
 
     print("pream:",pream.shape)
-    print("pream:",pream)
     print("pream_recv:",pream_recv.shape)
-    print("pream_recv:",pream_recv)
 
-    print("label:",label.shape)
-    print("label:",label)
+    print("label:",tx_label.shape)
     print("payload_recv:",payload_recv.shape)
-    print("payload_recv:",payload_recv)
 
     # alias received preamble symbols as x
     x = pream_recv[0]
@@ -60,12 +58,21 @@ if __name__ == "__main__":
     lms = lms_model(order)
     # estimate inverse channel with LMS
     e = lms.inverse_channel(d,x,mu)
+    print("Estimated inverse taps:",lms.get_inverse_channel())
 
     # Symbol equaliztion for payload
     x_payload = payload_recv[0]
     x_payload = x_payload[:,0]+1j*x_payload[:,1]
     est_payload = lms.estimate(x_payload)
-    est_label = temp_demod_qpsk(est_payload[:2])
+    est_label = demod_qpsk(est_payload)
+    rx_label = demod_qpsk(x_payload)
+
+    # compute bit error rate (BER) as l1 norm of difference of actual
+    # and estimated binary payload sequences
+    ser_lms = payload_size - np.linalg.norm((est_label == tx_label)[0],1)
+    ser_og = payload_size - np.linalg.norm((rx_label == tx_label)[0],1)
+
+    print("BER (before)->(after) LMS: (",ser_og,")->(",ser_lms,")")
 
     ######################################
     # original plots for recieved and equalized preamble
@@ -83,8 +90,15 @@ if __name__ == "__main__":
     mngr.window.setGeometry(700,100,600,600)
 
     plt.title("Received & Equalized Payload Symbols")
-    plt.scatter(x_payload[start:].real,x_payload[start:].imag,label="received")
-    plt.scatter(est_payload[start:].real,est_payload[start:].imag,label="equalized")
+
+    a = np.sqrt(2)/2.0
+    label_map = {0: -1*a - 1j*a, 1: -1*a + 1j*a, 2: a - 1j*a, 3: a + 1j*a}
+    label_to_sym = lambda t: label_map[t]
+    tx_payload = np.array([label_to_sym(l) for l in tx_label[0]])
+
+    plt.scatter(x_payload.real,x_payload.imag,label="received")
+    plt.scatter(est_payload.real,est_payload.imag,label="equalized")
+    plt.scatter(tx_payload.real,tx_payload.imag,label="transmitted")
     plt.legend()
 
     plt.show()

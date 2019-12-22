@@ -44,5 +44,8 @@ class lms_model(object):
         # performance
         return e
 
+    def get_inverse_channel(self):
+        return self.w
+
     def estimate(self, signal):
         return predict(signal, self.w, self.order)
