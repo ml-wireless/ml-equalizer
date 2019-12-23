@@ -60,7 +60,7 @@ if __name__ == "__main__":
     e = lms.inverse_channel(d,x,mu)
     print("Estimated inverse taps:",lms.get_inverse_channel())
 
-    # Symbol equaliztion for payload
+    # Symbol equalization for payload
     x_payload = payload_recv[0]
     x_payload = x_payload[:,0]+1j*x_payload[:,1]
     est_payload = lms.estimate(x_payload)
@@ -69,30 +69,72 @@ if __name__ == "__main__":
 
     # compute bit error rate (BER) as l1 norm of difference of actual
     # and estimated binary payload sequences
-    ser_lms = payload_size - np.linalg.norm((est_label == tx_label)[0],1)
-    ser_og = payload_size - np.linalg.norm((rx_label == tx_label)[0],1)
+    be_lms = payload_size - np.linalg.norm((est_label == tx_label)[0],1)
+    be_og = payload_size - np.linalg.norm((rx_label == tx_label)[0],1)
 
-    print("BER (before)->(after) LMS: (",ser_og,")->(",ser_lms,")")
+    ber_lms = np.around((be_lms / payload_size)*100,2)
+    ber_og = np.around((be_og / payload_size)*100,2)
 
     ######################################
-    # original plots for recieved and equalized preamble
+    # Plot the LMS error
     ######################################
     ndx = np.linspace(1,pream_size,pream_size)
     start = ndx.shape[0]-100
+    error = np.abs(e.real) # sign of error doesn't matter
 
-    plt.title("LMS Preamble Training Error")
-    plt.plot(ndx,e.real,label="real")
-    plt.plot(ndx,e.imag,label="imag")
+    # determining point of convergence by first taking the mean of
+    # the last values of error to get a sense of the error's
+    # settling point
+    settled_mean_error = np.mean(error[200:])
+
+    # then find when we're first within 1% of the settled mean of the
+    # error, calculated over a 40 symbol window
+    N = 40
+    sliding_mean_error = np.array(
+            [np.mean(error[int(x):int(x+N)]) for x in ndx])
+
+    # find first occurence of sliding window's mean of error getting
+    # within 10% (arbitrary, close) of mean of settled error
+    thresh = 1.10
+    syms_to_conv = 0
+    while (sliding_mean_error[syms_to_conv]
+            > thresh*settled_mean_error):
+        syms_to_conv += 1
+
+    plt.title("LMS Preamble Training Error \nBER=(" + str(ber_og)
+            + "->" + str(ber_lms) + "), syms-to-converge="
+            + str(syms_to_conv) + "")
+
+    # note: imag. error was always zero
+    plt.plot(ndx,error,label="real")
+
+    plt.plot([0, ndx[-1]], [settled_mean_error, settled_mean_error],
+            color='gray', linestyle='solid', linewidth=5,
+            label="mean of settled error")
+
+    plt.plot(ndx,sliding_mean_error)
+
+    # plot vertical line corresponding to point of convergence
+    plt.plot([syms_to_conv, syms_to_conv], [0, np.amax(error)],
+            color='gray', linestyle='dotted', linewidth=2,
+            label="(10%) convergence point")
+
     plt.legend()
 
+    ######################################
+    # Plot the symbol constellations
+    ######################################
     plt.figure(2)
     mngr = plt.get_current_fig_manager()
     mngr.window.setGeometry(700,100,600,600)
 
-    plt.title("Received & Equalized Payload Symbols")
+    plt.title("Received & Equalized Payload Symbols\nBER=("
+            + str(ber_og) + "->" + str(ber_lms)
+            + "), syms-to-converge=" + str(syms_to_conv) + "")
 
     a = np.sqrt(2)/2.0
-    label_map = {0: -1*a - 1j*a, 1: -1*a + 1j*a, 2: a - 1j*a, 3: a + 1j*a}
+    label_map = {0: -1*a - 1j*a, 1: -1*a + 1j*a, 2: a - 1j*a,
+            3: a + 1j*a}
     label_to_sym = lambda t: label_map[t]
     tx_payload = np.array([label_to_sym(l) for l in tx_label[0]])
 
@@ -101,7 +143,10 @@ if __name__ == "__main__":
     plt.scatter(tx_payload.real,tx_payload.imag,label="transmitted")
     plt.legend()
 
+    ######################################
+    # Print results
+    ######################################
+    print("BER (before)->(after) LMS: (",ber_og,"%)->(",ber_lms,"%)")
+    print("LMS symbols to converge: ", syms_to_conv)
+
     plt.show()
-    ######################################
-    # original procedure for recieved and equalized preamble
-    ######################################
