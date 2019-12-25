@@ -102,7 +102,7 @@ if __name__ == "__main__":
         syms_to_conv += 1
 
     plt.title("LMS Preamble Training Error \nBER=(" + str(ber_og)
-            + "->" + str(ber_lms) + "), syms-to-converge="
+            + "->" + str(ber_lms) + "%), syms-to-converge="
             + str(syms_to_conv) + "")
 
     # note: imag. error was always zero
@@ -130,7 +130,7 @@ if __name__ == "__main__":
 
     plt.title("Received & Equalized Payload Symbols\nBER=("
             + str(ber_og) + "->" + str(ber_lms)
-            + "), syms-to-converge=" + str(syms_to_conv) + "")
+            + "%), syms-to-converge=" + str(syms_to_conv) + "")
 
     a = np.sqrt(2)/2.0
     label_map = {0: -1*a - 1j*a, 1: -1*a + 1j*a, 2: a - 1j*a,
