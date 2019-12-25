@@ -18,8 +18,8 @@ pream_size = 1000 #ideally ~40   # number of preamble symbols
 payload_size = 2500 # number of payload symbols
 
 # LMS parameters
-mu = 0.01 # step size
-order = 20 # num FIR taps
+mu = 0.09 # step size
+order = 3 # num FIR taps
 
 # convert QPSK symbols to 0,1,2,3 symbols per map:
 #  1 | 3
@@ -36,8 +36,9 @@ if __name__ == "__main__":
     #       the number of symbols? Is the channel changing for each
     #       batch of symbols / packet?
     # @note pream is the true preamble, recv is the received preamble
-    pream, pream_recv, payload_recv, tx_label = offline.gen_ktap(data_size,
-            pream_size, model_tap_size, train_snr, payload_size, min_phase=True)
+    pream, pream_recv, payload_recv, tx_label = offline.gen_ktap(
+            data_size, pream_size, model_tap_size, train_snr,
+            payload_size, min_phase=True)
 
     print("pream:",pream.shape)
     print("pream_recv:",pream_recv.shape)
