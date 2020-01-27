@@ -20,8 +20,8 @@ pream_size = 1000 #ideally ~40   # number of preamble symbols
 payload_size = 2500 # number of payload symbols
 
 # LMS parameters
-mu = 0.01 # step size
-order = 21 # num FIR taps
+mu = 0.09 # step size
+order = 3 # num FIR taps
 
 # convert QPSK symbols to 0,1,2,3 symbols per map:
 #  1 | 3
@@ -38,8 +38,8 @@ if __name__ == "__main__":
     #       the number of symbols? Is the channel changing for each
     #       batch of symbols / packet?
     # @note pream is the true preamble, recv is the received preamble
-    pream, pream_recv, payload_recv, tx_label = offline.gen_ktap(data_size,
-            pream_size, model_tap_size, train_snr, payload_size, min_phase=False)
+    pream, pream_recv, payload_recv, tx_label = offline.gen_ktap(
+            data_size, pream_size, model_tap_size, train_snr, payload_size)
 
     print("pream:",pream.shape)
     print("pream_recv:",pream_recv.shape)
@@ -104,7 +104,7 @@ if __name__ == "__main__":
         syms_to_conv += 1
 
     plt.title("LMS Preamble Training Error \nBER=(" + str(ber_og)
-            + "->" + str(ber_lms) + "), syms-to-converge="
+            + "->" + str(ber_lms) + "%), syms-to-converge="
             + str(syms_to_conv) + "")
 
     # note: imag. error was always zero
@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
     plt.title("Received & Equalized Payload Symbols\nBER=("
             + str(ber_og) + "->" + str(ber_lms)
-            + "), syms-to-converge=" + str(syms_to_conv) + "")
+            + "%), syms-to-converge=" + str(syms_to_conv) + "")
 
     a = np.sqrt(2)/2.0
     label_map = {0: -1*a - 1j*a, 1: -1*a + 1j*a, 2: a - 1j*a,
