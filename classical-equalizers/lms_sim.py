@@ -2,6 +2,8 @@ import sys
 sys.path.append('../')
 import equalizer.util.offline as offline
 import numpy as np
+import matplotlib
+matplotlib.use('AGG')
 from matplotlib import pyplot as plt
 from scipy import signal, fftpack
 from lms_eq import lms_model
@@ -19,7 +21,7 @@ payload_size = 2500 # number of payload symbols
 
 # LMS parameters
 mu = 0.01 # step size
-order = 20 # num FIR taps
+order = 21 # num FIR taps
 
 # convert QPSK symbols to 0,1,2,3 symbols per map:
 #  1 | 3
@@ -37,7 +39,7 @@ if __name__ == "__main__":
     #       batch of symbols / packet?
     # @note pream is the true preamble, recv is the received preamble
     pream, pream_recv, payload_recv, tx_label = offline.gen_ktap(data_size,
-            pream_size, model_tap_size, train_snr, payload_size, min_phase=True)
+            pream_size, model_tap_size, train_snr, payload_size, min_phase=False)
 
     print("pream:",pream.shape)
     print("pream_recv:",pream_recv.shape)
@@ -120,13 +122,14 @@ if __name__ == "__main__":
             label="(10%) convergence point")
 
     plt.legend()
+    plt.savefig('error.png')
 
     ######################################
     # Plot the symbol constellations
     ######################################
     plt.figure(2)
-    mngr = plt.get_current_fig_manager()
-    mngr.window.setGeometry(700,100,600,600)
+#     mngr = plt.get_current_fig_manager()
+#     mngr.window.setGeometry(700,100,600,600)
 
     plt.title("Received & Equalized Payload Symbols\nBER=("
             + str(ber_og) + "->" + str(ber_lms)
@@ -142,11 +145,10 @@ if __name__ == "__main__":
     plt.scatter(est_payload.real,est_payload.imag,label="equalized")
     plt.scatter(tx_payload.real,tx_payload.imag,label="transmitted")
     plt.legend()
+    plt.savefig('symbol.png')
 
     ######################################
     # Print results
     ######################################
     print("BER (before)->(after) LMS: (",ber_og,"%)->(",ber_lms,"%)")
     print("LMS symbols to converge: ", syms_to_conv)
-
-    plt.show()

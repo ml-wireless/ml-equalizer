@@ -7,19 +7,21 @@ import numpy as np
 def lms(pream_recv, pream, order, mu=0.1):
 
     # init weights to random complex values
-    w = np.array(np.random.normal(0,1,order)) + 1j*np.array(np.random.normal(0,1,order));
+    w = np.array(np.random.normal(0,1,order)) + 1j*np.array(np.random.normal(0,1,order))
 
-    pream_recv = np.pad(pream_recv, (order-1,0), 'constant')
+    left = (order - 1) // 2
+    pream_recv = np.pad(pream_recv, (left, order - 1 - left), 'constant')
 
-    e = np.zeros(pream.shape[0])
+    e = np.zeros(pream.shape[0], dtype=np.complex_)
 
     for i in range(pream.shape[0]):
+        x = pream_recv[i:i+order]
         # apply the FIR to get current output
-        y = pream_recv[i:i+order].T @ w
+        y = x.T @ w
         # compute latest error
         e[i] = pream[i] - y # cost / error
         # update weights
-        w = w + mu*e[i]*pream_recv[i:i+order].conj()
+        w = w + mu*e[i]*x.conj()
 
     return w, e
 
@@ -31,7 +33,7 @@ def predict(signal, w, order):
     #     y[i] = signal[(i - (order - 1)):(i + 1)].T @ w
 
     #np.convolve flips slider
-    return np.convolve(signal, np.flip(w), mode='full')[:signal.shape[0]]
+    return np.convolve(signal, np.flip(w), mode='same')
 
 
 class lms_model(object):

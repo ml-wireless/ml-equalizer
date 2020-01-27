@@ -40,8 +40,8 @@ def gen_ktap(batch_size, seq_size, tap_size, snr, payload_size=0, mod=gen_qpsk, 
         return pream, tap, pream_recv
     payload, label = mod(batch_size, payload_size)
     payload_recv = ch.process(tap, payload)
-    if min_phase:
-        print("Taps are:", tap)
+    # if min_phase:
+    print("Taps are:", tap)
     return pream, pream_recv, payload_recv, label
 
 
