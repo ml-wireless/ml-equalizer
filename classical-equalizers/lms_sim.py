@@ -13,7 +13,7 @@ from lms_eq import lms_model
 #       in the code too)
 
 model_tap_size = 2 # order of the linear, simulated channel
-data_size = 1      # number of packets
+data_size = 10000      # number of packets
 train_snr = 25     # channel SNR
 
 pream_size = 1000 #ideally ~40   # number of preamble symbols
@@ -54,19 +54,19 @@ if __name__ == "__main__":
     print("Estimated inverse taps:", lms.get_inverse_channel())
 
     # Symbol equalization for payload
-    x_payload = payload_recv[..., 0] + 1j * payload_recv[..., 1]
-    est_payload = lms.estimate(x_payload)
-    est_label = offline.demod_qpsk_im(est_payload)
-    rx_label = offline.demod_qpsk_im(x_payload)
+    est_payload = lms.estimate(payload_recv)
+    est_label = offline.demod_qpsk(est_payload)
+    rx_label = offline.demod_qpsk(payload_recv)
 
     # compute bit error rate (BER) as l1 norm of difference of actual
     # and estimated binary payload sequences
-    ber_lms = offline.bit_error_rate(est_label, tx_label)
-    ber_og = offline.bit_error_rate(rx_label, tx_label)
+    ber_lms = 100 * offline.bit_error_rate(est_label, tx_label, 2)
+    ber_og = 100 * offline.bit_error_rate(rx_label, tx_label, 2)
 
     ######################################
     # Plot the LMS error
     ######################################
+    print(e.shape)
     ndx = np.linspace(1, pream_size, pream_size)
     start = ndx.shape[0] - 100
     error = np.abs(e[0]) # sign of error doesn't matter
@@ -128,8 +128,8 @@ if __name__ == "__main__":
     label_to_sym = lambda t: label_map[t]
     tx_payload = np.array([label_to_sym(l) for l in tx_label[0]])
 
-    plt.scatter(x_payload.real,x_payload.imag,label="received")
-    plt.scatter(est_payload.real,est_payload.imag,label="equalized")
+    plt.scatter(payload_recv[0, :, 0],payload_recv[0, :, 1],label="received")
+    plt.scatter(est_payload[0, :, 0],est_payload[0, :, 1],label="equalized")
     plt.scatter(tx_payload.real,tx_payload.imag,label="transmitted")
     plt.legend()
     plt.savefig('symbol.png')

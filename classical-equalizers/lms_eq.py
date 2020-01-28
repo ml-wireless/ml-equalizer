@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../')
 import equalizer.util.offline as offline
-from equalizer.channel.linear import real_tap, tap_proc
+from equalizer.channel.linear import im_tap, tap_proc
 import numpy as np
 
 #use lms to calculate inverse channel weights
@@ -11,12 +11,11 @@ def lms(pream_recv, pream, order, mu=0.1):
     w_size = pream.shape[:-1] + (order,)
     w = np.random.normal(size=w_size) + 1j * np.random.normal(size=w_size)
 
-    left = (order - 1) // 2
     # (..., length)
+    e = np.zeros(pream_recv.shape, dtype=np.complex_)
+    left = (order - 1) // 2
     pad_size = ((0, 0),) * (pream.ndim - 1) + ((left, order - 1 - left),)
     pream_recv = np.pad(pream_recv, pad_size, 'constant')
-    # (..., length)
-    e = np.zeros(pream_recv.size, dtype=np.complex_)
 
     for i in range(pream.shape[-1]):
         x = pream_recv[..., i:i+order]
@@ -25,7 +24,7 @@ def lms(pream_recv, pream, order, mu=0.1):
         # compute latest error
         e[..., i] = pream[..., i] - y # cost / error
         # update weights
-        w += mu * e[..., i] * x.conj()
+        w += mu * e[..., i:i+1] * x.conj()
 
     return w, e
 
@@ -37,8 +36,7 @@ def predict(signal, w, order):
     #     y[i] = signal[(i - (order - 1)):(i + 1)].T @ w
 
     #np.convolve flips slider
-    return 
-
+    return tap_proc(im_tap(np.flip(w, axis=-1)), signal)
 
 class lms_model(object):
     def __init__(self, order):
