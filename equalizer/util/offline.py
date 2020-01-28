@@ -50,6 +50,11 @@ def demod_qpsk(x):
     l = l.astype(np.int32)
     return l
 
+def demod_qpsk_im(x):
+    l = 2 * (x.real > 0) + 1 * (x.imag > 0)
+    l = l.astype(np.int32)
+    return l
+
 def bit_error_rate(x, y, bits):
     x = x ^ y
     ret = 0

@@ -21,16 +21,7 @@ payload_size = 2500 # number of payload symbols
 
 # LMS parameters
 mu = 0.09 # step size
-order = 3 # num FIR taps
-
-# convert QPSK symbols to 0,1,2,3 symbols per map:
-#  1 | 3
-# ---|---
-#  0 | 2
-def demod_qpsk(x):
-    l = 2 * (x.real > 0) + 1 * (x.imag > 0)
-    l = l.astype(np.int32)
-    return l
+order = 5 # num FIR taps
 
 if __name__ == "__main__":
     # gen received symbols using channel simulator
@@ -48,41 +39,37 @@ if __name__ == "__main__":
     print("payload_recv:",payload_recv.shape)
 
     # alias received preamble symbols as x
-    x = pream_recv[0]
+    x = pream_recv
 
     # alias desired preamble symbols as d
-    d = pream[0]
+    d = pream
 
     # convert x,d to numpy complex numbers
-    x = x[:,0]+1j*x[:,1]
-    d = d[:,0]+1j*d[:,1]
+    x = x[..., 0] + 1j * x[..., 1]
+    d = d[..., 0] + 1j * d[..., 1]
 
     lms = lms_model(order)
     # estimate inverse channel with LMS
-    e = lms.inverse_channel(d,x,mu)
-    print("Estimated inverse taps:",lms.get_inverse_channel())
+    e = lms.inverse_channel(d, x ,mu)
+    print("Estimated inverse taps:", lms.get_inverse_channel())
 
     # Symbol equalization for payload
-    x_payload = payload_recv[0]
-    x_payload = x_payload[:,0]+1j*x_payload[:,1]
+    x_payload = payload_recv[..., 0] + 1j * payload_recv[..., 1]
     est_payload = lms.estimate(x_payload)
-    est_label = demod_qpsk(est_payload)
-    rx_label = demod_qpsk(x_payload)
+    est_label = offline.demod_qpsk_im(est_payload)
+    rx_label = offline.demod_qpsk_im(x_payload)
 
     # compute bit error rate (BER) as l1 norm of difference of actual
     # and estimated binary payload sequences
-    be_lms = payload_size - np.linalg.norm((est_label == tx_label)[0],1)
-    be_og = payload_size - np.linalg.norm((rx_label == tx_label)[0],1)
-
-    ber_lms = np.around((be_lms / payload_size)*100,2)
-    ber_og = np.around((be_og / payload_size)*100,2)
+    ber_lms = offline.bit_error_rate(est_label, tx_label)
+    ber_og = offline.bit_error_rate(rx_label, tx_label)
 
     ######################################
     # Plot the LMS error
     ######################################
-    ndx = np.linspace(1,pream_size,pream_size)
-    start = ndx.shape[0]-100
-    error = np.abs(e.real) # sign of error doesn't matter
+    ndx = np.linspace(1, pream_size, pream_size)
+    start = ndx.shape[0] - 100
+    error = np.abs(e[0]) # sign of error doesn't matter
 
     # determining point of convergence by first taking the mean of
     # the last values of error to get a sense of the error's
