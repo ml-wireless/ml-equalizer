@@ -12,6 +12,19 @@ def real_tap(a):
         a = np.expand_dims(a, -1)
     return m * a
 
+def im_tap(a):
+    """
+    return tap kernel from complex numbers
+    a: (*, k) dtype=np.complex_
+    returns: (*, k, 2, 2)
+    """
+    # [[r, -i],
+    #  [i,  r]]
+    r, i = np.real(a), np.imag(a)
+    col1 = np.stack((r, i), axis=-1)
+    col2 = np.stack((-i, r), axis=-1)
+    return np.stack((col1, col2), axis=-1)
+
 def tap_proc(a, x):
     """
     process a k-tap channel
@@ -42,13 +55,7 @@ def rot_mat(omega):
     `omega`: angle in rad, (*)
     `returns`: (*, 2, 2)
     """
-    # [[cos(x), -sin(x)],
-    #  [sin(x),  cos(x)]]
-    co = np.cos(omega)
-    si = np.sin(omega)
-    col1 = np.stack((co, si), axis=-1)
-    col2 = np.stack((-si, co), axis=-1)
-    return np.stack((col1, col2), axis=-1)
+    return im_tap(np.cos(omega) + np.sin(omega) * 1j)
 
 def cfo_proc(omega, x):
     """
@@ -84,6 +91,25 @@ def awgn_proc(snr, x):
     noise = noise * np.random.randn(*shapes)
     return x + noise
 
+def inverse_tap_fft(a, expand, trunc, eps=0):
+    """
+    inverse a tap using FFT:
+    a ->(DFT) A -> 1/(A+eps) ->(IDFT) b
+    `a`: (*, k)
+    `expand`: length to expand a, should be power of 2
+    `trunc`: truncate to produce b
+    `eps`: eps
+
+    NOTE: assume real tap now
+    """
+    width = a.shape[-1]
+    pad_left = expand // 2 - (width - 1) // 2
+    pad_right = expand - width - pad_left
+    a = np.pad(a, ((0, 0), ) * (a.ndim - 1) + ((pad_left, pad_right), ), mode='constant', constant_values=0)
+    f = 1 / (np.fft.fft(a) + eps)
+    a = np.real(np.fft.ifft(f))
+    l = expand // 2 - (trunc - 1) // 2
+    return a[..., l:l+trunc]
 
 class LinearChannel(object):
     def __init__(self, tap_size, snr, max_cfo=None):
