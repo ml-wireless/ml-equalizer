@@ -126,6 +126,4 @@ class LMS(object):
         self.inv = im_tap(np.flip(w, axis=-1))
     
     def estimate(self, recv):
-        print(self.inv.shape)
-        print(recv.shape)
         return tap_proc(self.inv, recv)
