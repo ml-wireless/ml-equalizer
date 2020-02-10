@@ -16,6 +16,12 @@ def to_torch(x):
 def to_numpy(x):
     return x.detach().cpu().numpy().astype(np.float)
 
+def to_complex(x):
+    return x[..., 0] + x[..., 1] * 1j
+
+def to_vec(x):
+    return np.stack((np.real(x), np.imag(x)), axis=-1)
+
 def gen_qpsk(batch_size, seq_size):
     """
     generate qpsk data

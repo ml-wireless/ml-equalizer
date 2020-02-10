@@ -92,3 +92,40 @@ class ClassicTap(object):
     
     def estimate(self, recv):
         return self.eq.estimate(recv)
+
+def lms(pream_recv, pream, order, mu=0.1):
+    # init weights to random complex values
+    # (..., order)
+    w_size = pream.shape[:-1] + (order,)
+    w = np.random.normal(size=w_size) + 1j * np.random.normal(size=w_size)
+
+    # (..., length)
+    e = np.zeros(pream_recv.shape, dtype=np.complex_)
+    left = (order - 1) // 2
+    pad_size = ((0, 0),) * (pream.ndim - 1) + ((left, order - 1 - left),)
+    pream_recv = np.pad(pream_recv, pad_size, 'constant')
+
+    for i in range(pream.shape[-1]):
+        x = pream_recv[..., i:i+order]
+        # apply the FIR to get current output
+        y = np.einsum('...i,...i->...', x, w)
+        # compute latest error
+        e[..., i] = pream[..., i] - y # cost / error
+        # update weights
+        w += mu * e[..., i:i+1] * x.conj()
+
+    return w, e
+
+class LMS(object):
+    def __init__(self, order, algo=lms):
+        self.algo = lambda s, r: algo(offline.to_complex(r), offline.to_complex(s), order)
+    
+    def update_preamble(self, pream, pream_recv):
+        w, e = self.algo(pream, pream_recv)
+        self.errors = e
+        self.inv = im_tap(np.flip(w, axis=-1))
+    
+    def estimate(self, recv):
+        print(self.inv.shape)
+        print(recv.shape)
+        return tap_proc(self.inv, recv)
