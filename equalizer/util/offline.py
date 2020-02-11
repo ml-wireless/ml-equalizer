@@ -16,6 +16,12 @@ def to_torch(x):
 def to_numpy(x):
     return x.detach().cpu().numpy().astype(np.float)
 
+def to_complex(x):
+    return x[..., 0] + x[..., 1] * 1j
+
+def to_vec(x):
+    return np.stack((np.real(x), np.imag(x)), axis=-1)
+
 def gen_qpsk(batch_size, seq_size):
     """
     generate qpsk data
@@ -58,6 +64,11 @@ def gen_ktap(batch_size, pream_size, tap_size, snr, payload_size=0, mod=gen_qpsk
 
 def demod_qpsk(x):
     l = 2 * (x[..., 0] > 0) + 1 * (x[..., 1] > 0)
+    l = l.astype(np.int32)
+    return l
+
+def demod_qpsk_im(x):
+    l = 2 * (x.real > 0) + 1 * (x.imag > 0)
     l = l.astype(np.int32)
     return l
 
