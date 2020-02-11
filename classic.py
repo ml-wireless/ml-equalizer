@@ -14,6 +14,7 @@ model_tap_size = 2
 order = 31
 expand = 8192
 eps = 0
+lms_order = 3
 
 # eval parameters
 eval_size = 10000
@@ -26,7 +27,7 @@ if __name__ == "__main__":
         "zf": ClassicTap(est, ZeroForcing, expand=expand, trunc=order, eps=eps),
         "mmse": MMSEInverse(order),
         "mmse2": ClassicTap(est, MMSEEqualizer),
-        "lms": LMS(3),
+        "lms": LMS(lms_order),
     }
     
     parser = ArgumentParser()
