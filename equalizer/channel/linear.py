@@ -124,12 +124,20 @@ class LinearChannel(object):
         self.snr = snr
         self.max_cfo = max_cfo
     
-    def generateParameters(self, m=None):
+    def generateParameters(self, m=None, min_phase=False):
         """
         m: batch size, None for no batch
         """
         shape = (self.tap_size,) if m == None else (m, self.tap_size)
         taps = np.random.randn(*shape)
+
+        if min_phase:
+            # given 1st coefficient "a0" of 2-tap filter, can get
+            # zero inside unit circle by ensuring -|a0| <= |a1| <= |a0|
+            for i in range(taps.shape[0]):
+                a0 = np.abs(taps[i][0])
+                taps[i][1] = np.random.uniform(-1*a0, a0)
+
         taps = taps / np.sqrt(np.sum(taps ** 2, axis=-1, keepdims=True))
         if self.max_cfo == None:
             return taps
