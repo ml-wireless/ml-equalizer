@@ -2,13 +2,16 @@ from argparse import ArgumentParser
 import numpy as np
 import torch
 import equalizer.util.offline as offline
-from equalizer.model.classic import ZeroForcing, MMSEInverse, MMSEEstimator, MMSEEqualizer, ClassicTap, LMS
-from equalizer.model.tap import TapEstimator
+from equalizer.model.classic import ZeroForcing, MMSEInverse, MMSEEstimator, MMSEEqualizer, ClassicTap, LMS, FilterEqualizer
+from equalizer.model.tap import TapEstimator, CNNEstimator
 from tqdm import tqdm
 
 # common parameters
 pream_size = 40
 model_tap_size = 2
+
+order_cnn = 5
+path_cnn = 'model/cnn-est.bin'
 
 # model parameters
 order = 31
@@ -23,11 +26,14 @@ eval_snr = [1, 10, 50, 100, 500, 1000, 5000]
 
 if __name__ == "__main__":
     est = MMSEEstimator(model_tap_size)
+    cnn = CNNEstimator(order_cnn)
+    cnn.load_state_dict(torch.load(path_cnn))
     model_bank = {
         "zf": ClassicTap(est, ZeroForcing, expand=expand, trunc=order, eps=eps),
         "mmse": MMSEInverse(order),
         "mmse2": ClassicTap(est, MMSEEqualizer),
         "lms": LMS(lms_order),
+        "cnn": ClassicTap(cnn, FilterEqualizer),
     }
     
     parser = ArgumentParser()

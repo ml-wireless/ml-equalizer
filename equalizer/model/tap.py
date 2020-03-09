@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+import numpy as np
 from ..util import offline
 
 class TapEstimator(nn.Module):
@@ -59,10 +60,13 @@ class TapEqualizer(nn.Module):
         return x
 
 class CNNEstimator(nn.Module):
-    def __init__(self, tap_size):
+    def __init__(self, tap_size, im=True):
         super(CNNEstimator, self).__init__()
         self.conv1 = nn.Conv1d(4, 32, 3, padding=1)
         self.conv2 = nn.Conv1d(32, 64, 3, padding=1)
+        self.im = im
+        if im:
+            tap_size = tap_size * 2
         self.fc = nn.Linear(64, tap_size)
     
     def forward(self, send, recv):
@@ -77,6 +81,15 @@ class CNNEstimator(nn.Module):
         x = self.fc(x)
         x = F.tanh(x)
         return x
+    
+    def estimate_tap(self, pream, pream_recv):
+        self.eval()
+        pream, pream_recv = offline.apply_list(offline.to_torch, pream, pream_recv)
+        ret = offline.to_numpy(self.forward(pream, pream_recv))
+        if self.im:
+            tap_size = ret.shape[-1] // 2
+            ret = ret[..., :tap_size] + ret[..., tap_size:] * 1j
+        return np.flip(ret, axis=-1)
 
 class NeuralTap(object):
     def __init__(self, estimator, equalizer):

@@ -81,6 +81,13 @@ class MMSEEqualizer(object):
     def estimate(self, recv):
         return self.algo(recv, self.tap)
 
+class FilterEqualizer(object):
+    def update_tap(self, tap):
+        self.tap = tap
+    
+    def estimate(self, recv):
+        return tap_proc(im_tap(self.tap), recv)
+
 class ClassicTap(object):
     def __init__(self, est, eq, **params):
         self.est = est
