@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import equalizer.util.offline as offline
 from equalizer.model.classic import ZeroForcing, MMSEInverse, MMSEEstimator, MMSEEqualizer, ClassicTap, LMS, FilterEqualizer
-from equalizer.model.tap import TapEstimator, CNNEstimator
+from equalizer.model.tap import TapEstimator, CNNEstimator, HybridLmsEstimator
 from tqdm import tqdm
 
 # common parameters
@@ -14,7 +14,7 @@ order_cnn = 5
 path_cnn = 'model/cnn-est.bin'
 
 # model parameters
-order = 31
+order = 5
 expand = 8192
 eps = 0
 lms_order = 3
@@ -28,12 +28,14 @@ if __name__ == "__main__":
     est = MMSEEstimator(model_tap_size)
     cnn = CNNEstimator(order_cnn)
     cnn.load_state_dict(torch.load(path_cnn))
+    hybrid = HybridLmsEstimator(cnn, order_cnn, 0.5)
     model_bank = {
         "zf": ClassicTap(est, ZeroForcing, expand=expand, trunc=order, eps=eps),
         "mmse": MMSEInverse(order),
         "mmse2": ClassicTap(est, MMSEEqualizer),
         "lms": LMS(lms_order),
         "cnn": ClassicTap(cnn, FilterEqualizer),
+        "hybrid": ClassicTap(hybrid, FilterEqualizer),
     }
     
     parser = ArgumentParser()

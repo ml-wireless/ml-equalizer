@@ -100,16 +100,22 @@ class ClassicTap(object):
     def estimate(self, recv):
         return self.eq.estimate(recv)
 
-def lms(pream_recv, pream, order, mu=0.1):
+def lms(pream_recv, pream, order, mu=0.1, init=None, pad_left=True):
     # init weights to random complex values
     # (..., order)
     w_size = pream.shape[:-1] + (order,)
-    w = np.random.normal(size=w_size) + 1j * np.random.normal(size=w_size)
+    if init is None:
+        w = np.random.normal(size=w_size) + 1j * np.random.normal(size=w_size)
+    else:
+        w = init
 
     # (..., length)
     e = np.zeros(pream_recv.shape, dtype=np.complex_)
     left = (order - 1) // 2
-    pad_size = ((0, 0),) * (pream.ndim - 1) + ((left, order - 1 - left),)
+    if pad_left:
+        pad_size = ((0, 0),) * (pream.ndim - 1) + ((left, order - 1 - left),)
+    else:
+        pad_size = ((0, 0),) * (pream.ndim - 1) + ((0, order - 1 - left),)
     pream_recv = np.pad(pream_recv, pad_size, 'constant')
 
     for i in range(pream.shape[-1]):

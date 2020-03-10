@@ -3,6 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 import numpy as np
 from ..util import offline
+from .classic import lms
 
 class TapEstimator(nn.Module):
     def __init__(self, seq_size, tap_size, middles=(300, 300)):
@@ -82,14 +83,36 @@ class CNNEstimator(nn.Module):
         x = F.tanh(x)
         return x
     
-    def estimate_tap(self, pream, pream_recv):
+    def estimate_tap(self, pream, pream_recv, flip=True):
         self.eval()
         pream, pream_recv = offline.apply_list(offline.to_torch, pream, pream_recv)
         ret = offline.to_numpy(self.forward(pream, pream_recv))
         if self.im:
             tap_size = ret.shape[-1] // 2
             ret = ret[..., :tap_size] + ret[..., tap_size:] * 1j
-        return np.flip(ret, axis=-1)
+        if flip:
+            ret = np.flip(ret, axis=-1)
+        return ret
+
+class HybridLmsEstimator(object):
+    def __init__(self, model, order, split=0.5, algo=lms, **params):
+        self.model = model
+        self.order = order
+        self.split = split
+        self.algo = lambda s, r, w: algo(offline.to_complex(r), offline.to_complex(s), self.order, init=w, pad_left=False, **params)
+    
+    def estimate_tap(self, pream, pream_recv):
+        head_size = int(np.floor(pream.shape[-2] * self.split))
+        w = self.model.estimate_tap(pream[..., :head_size, :], pream_recv[..., :head_size, :], flip=False)
+    
+        left_pad = (self.order - 1) // 2
+        if head_size < left_pad:
+            pad_size = ((0, 0),) * (pream_recv.ndim - 2) + ((left_pad - head_size, 0), (0, 0))
+            tail = np.pad(pream_recv, pad_size, mode='constant')
+        else:
+            tail = pream_recv[..., head_size-left_pad:, :]
+        w, self.errors = self.algo(pream[..., head_size:, :], tail, w)
+        return np.flip(w, -1)
 
 class NeuralTap(object):
     def __init__(self, estimator, equalizer):
