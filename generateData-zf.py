@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 # common parameters
 pream_size = 40
-tap_size = 2
+tap_size = 5
 data_size = 10000
 zf_data = 'data/zf_data_snr10_pream40'
 
