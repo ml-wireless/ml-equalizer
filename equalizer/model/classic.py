@@ -1,16 +1,71 @@
 import numpy as np
 from ..util import offline
-from ..channel.linear import inverse_tap_fft, tap_proc, real_tap, im_tap
+from ..channel.linear import tap_proc, real_tap, im_tap
 
-class ZeroForcing(object):
-    def __init__(self, algo=inverse_tap_fft, **params):
+def pad_signal(a, expand, mode):
+    """
+    pad a signal to expand
+    `a`: (*, k)
+    """
+    width = a.shape[-1]
+    if width > expand:
+        return a
+
+    if mode == 'middle':
+        pad_left = expand // 2 - (width - 1) // 2
+    elif mode == 'left':
+        pad_left = 0
+
+    pad_right = expand - width - pad_left
+    pads = ((0, 0), ) * (a.ndim - 1) + ((pad_left, pad_right), )
+    a = np.pad(a, pads, mode='constant')
+    return a
+
+def inverse_tap_fft(a, expand, trunc, eps=0):
+    """
+    inverse a tap using FFT:
+    a ->(DFT) A -> 1/(A+eps) ->(IDFT) b
+    `a`: (*, k)
+    `expand`: length to expand a, should be power of 2
+    `trunc`: truncate to produce b
+    `eps`: eps
+    """
+    a = pad_signal(a, expand, 'middle')
+    f = 1 / (np.fft.fft(a) + eps)
+    a = np.fft.ifft(f)
+    l = expand // 2 - (trunc - 1) // 2
+    return a[..., l:l+trunc]
+
+def zfe_fft(recv, pream, expand, trunc, eps=0):
+    """
+    estimate inverse tap using FFT
+    recv ->(DFT) R, pream ->(DFT) S, S/(R + eps) ->(IDFT) ret
+
+    `recv`: (*, k), complex
+    `pream`: (*, k), complex
+    """
+    R = np.fft.fft(pad_signal(recv, expand, 'left'))
+    S = np.fft.fft(pad_signal(pream, expand, 'left'))
+    ret = np.fft.ifft(S / (R + eps))
+    l = (trunc - 1) // 2
+    r = trunc - l
+    return np.concatenate((ret[..., -l:], ret[..., :r]), axis=-1)
+
+class ZeroForcingEstimator(object):
+    def __init__(self, algo=zfe_fft, **params):
+        self.algo = lambda s, r: algo(offline.to_complex(r), offline.to_complex(s), **params)
+    
+    def estimate_tap(self, pream, pream_recv):
+        return self.algo(pream, pream_recv)
+
+class ZeroForcingInverse(object):
+    def __init__(self, est, algo=inverse_tap_fft, **params):
+        self.est = est
         self.algo = lambda a: algo(a, **params)
-    
-    def update_tap(self, tap):
-        self.inv = real_tap(self.algo(tap))
-    
-    def estimate(self, recv):
-        return tap_proc(self.inv, recv)
+
+    def estimate_tap(self, pream, pream_recv):
+        tap = self.est.estimate_tap(pream, pream_recv)
+        return self.algo(tap)
 
 def mmse1(recv, pream, order, eps=0):
     """
@@ -36,24 +91,18 @@ def mmse1(recv, pream, order, eps=0):
         d += np.real(temp_pream[..., i:i+1] * Ri.conj())
     return np.flip(np.linalg.solve(R + np.eye(order) * eps, d), -1)
 
-class MMSEInverse(object):
-    def __init__(self, order, algo=mmse1):
-        self.algo = lambda s, r: real_tap(algo(r, s, order))
-    
-    def update_preamble(self, pream, pream_recv):
-        self.inv = self.algo(pream, pream_recv)
-
-    def estimate(self, recv):
-        return tap_proc(self.inv, recv)
-
 class MMSEEstimator(object):
-    def __init__(self, order, algo=mmse1):
-        self.algo = lambda s, r: algo(r, s, order)
+    def __init__(self, order, inverse, algo=mmse1, **params):
+        if inverse:
+            self.algo = lambda s, r: algo(r, s, order, **params)
+        else:
+            self.algo = lambda s, r: algo(s, r, order, **params)
     
     def estimate_tap(self, pream, pream_recv):
-        return self.algo(pream_recv, pream)
+        return self.algo(pream, pream_recv)
 
 # mmse with known channel
+# assume tap is real
 def mmse2(recv, tap, eps=0.01):
     temp_recv = (recv[..., 0] + recv[..., 1]*1j)
     recv_len = temp_recv.shape[-1]
@@ -72,8 +121,8 @@ def mmse2(recv, tap, eps=0.01):
     return ret
 
 class MMSEEqualizer(object):
-    def __init__(self, algo=mmse2):
-        self.algo = algo
+    def __init__(self, algo=mmse2, **params):
+        self.algo = lambda r, tap: algo(r, tap, **params)
 
     def update_tap(self, tap):
         self.tap = tap
@@ -83,10 +132,10 @@ class MMSEEqualizer(object):
 
 class FilterEqualizer(object):
     def update_tap(self, tap):
-        self.tap = tap
+        self.tap = im_tap(tap)
     
     def estimate(self, recv):
-        return tap_proc(im_tap(self.tap), recv)
+        return tap_proc(self.tap, recv)
 
 class ClassicTap(object):
     def __init__(self, est, eq, **params):
@@ -129,14 +178,11 @@ def lms(pream_recv, pream, order, mu=0.1, init=None, pad_left=True):
 
     return w, e
 
-class LMS(object):
+class LMSEstimator(object):
     def __init__(self, order, algo=lms):
         self.algo = lambda s, r: algo(offline.to_complex(r), offline.to_complex(s), order)
     
-    def update_preamble(self, pream, pream_recv):
+    def estimate_tap(self, pream, pream_recv):
         w, e = self.algo(pream, pream_recv)
         self.errors = e
-        self.inv = im_tap(np.flip(w, axis=-1))
-    
-    def estimate(self, recv):
-        return tap_proc(self.inv, recv)
+        return np.flip(w, axis=-1)

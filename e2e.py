@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 import numpy as np
 import torch
 import equalizer.util.offline as offline
-from equalizer.model.classic import ZeroForcing, MMSEInverse, MMSEEstimator, MMSEEqualizer, ClassicTap, LMS, FilterEqualizer
+from equalizer.model.classic import ZeroForcingEstimator, MMSEEstimator, LMSEstimator, FilterEqualizer, ClassicTap
 from equalizer.model.tap import TapEstimator, CNNEstimator, HybridLmsEstimator
 from tqdm import tqdm
 
@@ -10,32 +10,35 @@ from tqdm import tqdm
 pream_size = 40
 model_tap_size = 2
 
-order_cnn = 5
-path_cnn = 'model/cnn-est.bin'
-
 # model parameters
 order = 5
+order_lms = 5
 expand = 8192
 eps = 0
-lms_order = 3
+
+# cnn parameters
+order_cnn = 5
+path_cnn = 'model/cnn-est-zf.bin'
 
 # eval parameters
 eval_size = 10000
 payload_size = 200
-eval_snr = [1, 10, 50, 100, 500, 1000, 5000]
+eval_snr = [-3, 0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30]
 
 if __name__ == "__main__":
-    est = MMSEEstimator(model_tap_size)
-    cnn = CNNEstimator(order_cnn)
-    cnn.load_state_dict(torch.load(path_cnn))
-    hybrid = HybridLmsEstimator(cnn, order_cnn, 0.5)
+    zf_est = ZeroForcingEstimator(expand=expand, trunc=order, eps=eps)
+    mmse_est = MMSEEstimator(order, True)
+    cnn_est = CNNEstimator(order_cnn)
+    cnn_est.load_state_dict(torch.load(path_cnn))
+    hybrid_est = HybridLmsEstimator(cnn_est, order_cnn, 0.5)
+    lms_est = LMSEstimator(order_lms)
+
     model_bank = {
-        "zf": ClassicTap(est, ZeroForcing, expand=expand, trunc=order, eps=eps),
-        "mmse": MMSEInverse(order),
-        "mmse2": ClassicTap(est, MMSEEqualizer),
-        "lms": LMS(lms_order),
-        "cnn": ClassicTap(cnn, FilterEqualizer),
-        "hybrid": ClassicTap(hybrid, FilterEqualizer),
+        "zf": ClassicTap(zf_est, FilterEqualizer),
+        "mmse": ClassicTap(mmse_est, FilterEqualizer),
+        "lms": ClassicTap(lms_est, FilterEqualizer),
+        "cnn": ClassicTap(cnn_est, FilterEqualizer),
+        "hybrid": ClassicTap(hybrid_est, FilterEqualizer),
     }
     
     parser = ArgumentParser()
