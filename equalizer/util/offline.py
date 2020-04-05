@@ -37,7 +37,7 @@ def gen_qpsk(batch_size, seq_size):
     data = data / np.sqrt(2)
     return data, label
 
-def gen_ktap(batch_size, pream_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel):
+def gen_ktap(batch_size, pream_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel, retTap=False):
     """
     generate ktap data
     if pream_size <= 0 and payload_size > 0, return payload_recv, tap, label
@@ -59,6 +59,8 @@ def gen_ktap(batch_size, pream_size, tap_size, snr, payload_size=0, mod=gen_qpsk
         return pream, tap, pream_recv
     elif pream_size <= 0:
         return payload_recv, tap, label
+    elif retTap:
+        return pream, pream_recv, payload_recv, label, tap
     else:
         return pream, pream_recv, payload_recv, label
 
@@ -74,9 +76,9 @@ def demod_qpsk_im(x):
 
 def bit_error_rate(x, y, bits):
     x = x ^ y
-    ret = 0
+    ret = np.zeros(x.shape[:-1])
     for i in range(bits):
-        ret += np.mean((x & (1 << i)) != 0)
+        ret += np.mean((x & (1 << i)) != 0, axis=-1)
     return ret / bits
 
 def batch_eval(model, inputs, output, loss_func, batch_size, optim=None, silent=True):
@@ -135,7 +137,7 @@ def train_e2e(model, inputs, output, loss_func, train_size, batch_size, epoch, s
     
     return np.array(train_loss), np.array(test_loss)
 
-def eval_e2e(model, pream_size, payload_size, tap_size, snr, eval_size, batch_size=None, silent=True):
+def eval_e2e(model, pream_size, payload_size, tap_size, snr, eval_size, batch_size=None, silent=True, retTap=False):
     if batch_size == None:
         batch_size = eval_size
     
@@ -143,13 +145,18 @@ def eval_e2e(model, pream_size, payload_size, tap_size, snr, eval_size, batch_si
     it = range(batches)
     if not silent:
         it = tqdm(it)
-    ber = 0
+    ber = []
+    taps = []
     for _ in it:
-        pream, pream_recv, payload_recv, label = gen_ktap(batch_size, pream_size, tap_size, snr, payload_size)
+        pream, pream_recv, payload_recv, label, tap = gen_ktap(batch_size, pream_size, tap_size, snr, payload_size, retTap=True)
 
         model.update_preamble(pream, pream_recv)
         payload_est = model.estimate(payload_recv)
 
         label_est = demod_qpsk(payload_est)
-        ber += bit_error_rate(label_est, label, 2)
-    return ber / batches
+        ber.append(bit_error_rate(label_est, label, 2))
+        taps.append(tap)
+    if retTap:
+        return np.concatenate(ber), np.concatenate(taps)
+    else:
+        return np.concatenate(ber)
