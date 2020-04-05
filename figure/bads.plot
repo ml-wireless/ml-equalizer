@@ -10,3 +10,5 @@ set yrange [-1.3:1.3]
 set grid
 
 plot 'cnn-bads.dat' u 1:2 w p t 'CNN',\
+     'mmse-bads.dat' u 1:2 w p t 'MMSE',\
+     'lms-bads.dat' u 1:2 w p t 'LMS',\
