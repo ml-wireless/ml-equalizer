@@ -27,5 +27,6 @@ if __name__ == "__main__":
     bers = np.array(bers)
 
     with open(args.output, 'w') as f:
+        print('# snr', *args.algo, file=f)
         for i in range(bers.shape[1]):
-            print(' '.join(map(str, bers[:, i])), file=f)
+            print(*bers[:, i], file=f)

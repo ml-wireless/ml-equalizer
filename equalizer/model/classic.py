@@ -149,7 +149,7 @@ class ClassicTap(object):
     def estimate(self, recv):
         return self.eq.estimate(recv)
 
-def lms(pream_recv, pream, order, mu=0.1, init=None, pad_left=True):
+def lms(pream_recv, pream, order, mu=0.1, init=None, pad_left=True, epoch=1, normalize=None):
     # init weights to random complex values
     # (..., order)
     w_size = pream.shape[:-1] + (order,)
@@ -167,20 +167,24 @@ def lms(pream_recv, pream, order, mu=0.1, init=None, pad_left=True):
         pad_size = ((0, 0),) * (pream.ndim - 1) + ((0, order - 1 - left),)
     pream_recv = np.pad(pream_recv, pad_size, 'constant')
 
-    for i in range(pream.shape[-1]):
-        x = pream_recv[..., i:i+order]
-        # apply the FIR to get current output
-        y = np.einsum('...i,...i->...', x, w)
-        # compute latest error
-        e[..., i] = pream[..., i] - y # cost / error
-        # update weights
-        w += mu * e[..., i:i+1] * x.conj()
+    for _ in range(epoch):
+        for i in range(pream.shape[-1]):
+            x = pream_recv[..., i:i+order]
+            # apply the FIR to get current output
+            y = np.einsum('...i,...i->...', x, w)
+            # compute latest error
+            e[..., i] = pream[..., i] - y # cost / error
+            # update weights
+            dw = e[..., i:i+1] * x.conj()
+            if normalize != None:
+                dw /= normalize + np.sum(x * x.conj(), axis=-1, keepdims=True)
+            w += mu * dw
 
     return w, e
 
 class LMSEstimator(object):
-    def __init__(self, order, algo=lms):
-        self.algo = lambda s, r: algo(offline.to_complex(r), offline.to_complex(s), order)
+    def __init__(self, order, algo=lms, **args):
+        self.algo = lambda s, r: algo(offline.to_complex(r), offline.to_complex(s), order, **args)
     
     def estimate_tap(self, pream, pream_recv):
         w, e = self.algo(pream, pream_recv)
