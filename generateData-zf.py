@@ -15,19 +15,19 @@ data_size = 20000
 # zf_data = 'data/zf_data_snr10_pream40'
 
 # model parameters
-order = 5
 expand = 8192
 eps = 0
 snr = 10
 
 if __name__ == "__main__":
     parser = ArgumentParser('gen-zf')
-    parser.add_argument('-o', '--output')
-    parser.add_argument('-p', '--pream', nargs='?', type=int, default=40)
+    parser.add_argument('-o', '--output', required=True)
+    parser.add_argument('-O', '--order', required=True, type=int)
+    parser.add_argument('-p', '--pream', type=int, default=40)
     args = parser.parse_args()
 
     pream, tap, pream_recv = offline.gen_ktap(data_size, args.pream, tap_size, snr)
-    inverse = inverse_tap_fft(tap, expand=expand, trunc=order, eps=eps)
+    inverse = inverse_tap_fft(tap, expand=expand, trunc=args.order, eps=eps)
     data2save = {
         'pream': pream,
         'pream_recv': pream_recv,
@@ -35,5 +35,5 @@ if __name__ == "__main__":
         'gen_taps': tap,
     }
 
-    with gzip.open(args.output + '.gz', 'wb') as f:
+    with gzip.open(args.output, 'wb') as f:
         pickle.dump(data2save, f)

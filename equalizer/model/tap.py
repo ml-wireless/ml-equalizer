@@ -63,6 +63,7 @@ class TapEqualizer(nn.Module):
 class CNNEstimator(nn.Module):
     def __init__(self, tap_size, im=True):
         super(CNNEstimator, self).__init__()
+        self.tap_size = tap_size
         self.conv1 = nn.Conv1d(4, 32, 3, padding=1)
         self.conv2 = nn.Conv1d(32, 64, 3, padding=1)
         self.im = im
@@ -95,9 +96,9 @@ class CNNEstimator(nn.Module):
         return ret
 
 class HybridLmsEstimator(object):
-    def __init__(self, model, order, split=0.5, algo=lms, **params):
+    def __init__(self, model, split=0.5, algo=lms, **params):
         self.model = model
-        self.order = order
+        self.order = model.tap_size
         self.split = split
         self.algo = lambda s, r, w: algo(offline.to_complex(r), offline.to_complex(s), self.order, init=w, pad_left=False, **params)
     
