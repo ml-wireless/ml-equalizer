@@ -24,7 +24,7 @@ est_bank = {
     "lms-5": LMSEstimator(5, mu=0.1),
     "lms-31": LMSEstimator(31, mu=0.04),
     "cnn-5": cnn_est,
-    "cnn-zf": load_est_model(5, path_cnn_zf),
+    "cnn-zf": load_est_model(31, path_cnn_zf),
     "cnn-31": cnn_est_31,
     "hybrid-5": hybrid_est,
     "hybrid-31": hybrid_est_31,
