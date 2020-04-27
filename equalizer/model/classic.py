@@ -149,6 +149,13 @@ class ClassicTap(object):
     def estimate(self, recv):
         return self.eq.estimate(recv)
 
+class DummyTap(object):
+    def update_preamble(self, pream, pream_recv):
+        pass
+    
+    def estimate(self, recv):
+        return np.copy(recv)
+
 def lms(pream_recv, pream, order, mu=0.1, init=None, pad_left=True, epoch=1, normalize=None):
     # init weights to random complex values
     # (..., order)

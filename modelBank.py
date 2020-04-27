@@ -1,5 +1,5 @@
 import torch
-from equalizer.model.classic import ZeroForcingEstimator, MMSEEstimator, LMSEstimator, FilterEqualizer, ClassicTap
+from equalizer.model.classic import ZeroForcingEstimator, MMSEEstimator, LMSEstimator, FilterEqualizer, ClassicTap, DummyTap
 from equalizer.model.tap import TapEstimator, CNNEstimator, HybridLmsEstimator
 
 path_cnn = 'model/cnn-est.bin'
@@ -31,3 +31,4 @@ est_bank = {
 }
 
 model_bank = { k: ClassicTap(v, FilterEqualizer) for k, v in est_bank.items() }
+model_bank['dummy'] = DummyTap()

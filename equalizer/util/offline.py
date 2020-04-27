@@ -37,7 +37,7 @@ def gen_qpsk(batch_size, seq_size):
     data = data / np.sqrt(2)
     return data, label
 
-def gen_ktap(batch_size, pream_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel, retTap=False):
+def gen_ktap(batch_size, pream_size, tap_size, snr, payload_size=0, mod=gen_qpsk, channel=LinearChannel, retTap=False, fixTap=None):
     """
     generate ktap data
     if pream_size <= 0 and payload_size > 0, return payload_recv, tap, label
@@ -45,7 +45,10 @@ def gen_ktap(batch_size, pream_size, tap_size, snr, payload_size=0, mod=gen_qpsk
     if both > 0, return pream, pream_recv, payload_recv, label
     """
     ch = channel(tap_size, snr)
-    tap = ch.generateParameters(batch_size)
+    if fixTap is None:
+        tap = ch.generateParameters(batch_size)
+    else:
+        tap = np.expand_dims(fixTap, axis=0)
 
     if pream_size > 0:
         pream, _ = mod(batch_size, pream_size)
@@ -137,7 +140,7 @@ def train_e2e(model, inputs, output, loss_func, train_size, batch_size, epoch, s
     
     return np.array(train_loss), np.array(test_loss)
 
-def eval_e2e(model, pream_size, payload_size, tap_size, snr, eval_size, batch_size=None, silent=True, retTap=False):
+def eval_e2e(model, pream_size, payload_size, tap_size, snr, eval_size, batch_size=None, silent=True, retTap=False, fixTap=None):
     if batch_size == None:
         batch_size = eval_size
     
@@ -148,7 +151,7 @@ def eval_e2e(model, pream_size, payload_size, tap_size, snr, eval_size, batch_si
     ber = []
     taps = []
     for _ in it:
-        pream, pream_recv, payload_recv, label, tap = gen_ktap(batch_size, pream_size, tap_size, snr, payload_size, retTap=True)
+        pream, pream_recv, payload_recv, label, tap = gen_ktap(batch_size, pream_size, tap_size, snr, payload_size, retTap=True, fixTap=fixTap)
 
         model.update_preamble(pream, pream_recv)
         payload_est = model.estimate(payload_recv)
