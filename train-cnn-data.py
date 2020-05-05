@@ -22,7 +22,8 @@ def pack_weight(tap):
 if __name__ == "__main__":
     parser = ArgumentParser('train-cnn-data')
     parser.add_argument('-d', '--data', required=True)
-    parser.add_argument('-o', '--output')
+    parser.add_argument('-o', '--output', required=True)
+    parser.add_argument('-f', '--figure', default="")
     parser.add_argument('epoch', nargs='?', type=int, default=10)
     args = parser.parse_args()
 
@@ -30,4 +31,8 @@ if __name__ == "__main__":
     model = CNNEstimator(inverse.shape[-1])
     inverse = pack_weight(inverse)
     train_size = int(np.floor(train_split * pream.shape[0]))
-    offline.train_e2e(model, (pream, pream_recv), inverse, F.mse_loss, train_size, batch_size, args.epoch, args.output, silent=False)
+    train_loss, test_loss = offline.train_e2e(model, (pream, pream_recv), inverse, F.mse_loss, train_size, batch_size, args.epoch, args.output, silent=False)
+    if args.figure != "":
+        with open(args.figure, 'a') as f:
+            for i in range(train_loss.shape[0]):
+                print(train_loss[i], test_loss[i], file=f)

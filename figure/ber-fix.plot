@@ -11,25 +11,25 @@ set grid
 set xtic 6
 set logscale y 10
 
-set title 'order=5 tap=[0.99 0.11]'
+set title 'order=5, tap=[0.99 0.11], training SNR=10'
 plot 'fix-ber.dat' u 1:2 w l t 'ZFE', \
      '' u 1:3 w l t 'MMSE', \
      '' u 1:4 w l t 'LMS', \
      '' u 1:5 w l t 'Hybrid', \
 
-set title 'order=5 tap=[0.73 -0.68]'
+set title 'order=5 tap=[0.73 -0.68], training SNR=10'
 plot 'fix-ber.dat' u 1:10 w l t 'ZFE', \
      '' u 1:11 w l t 'MMSE', \
      '' u 1:12 w l t 'LMS', \
      '' u 1:13 w l t 'Hybrid', \
 
-set title 'order=31 tap=[0.99 0.11]'
+set title 'order=31 tap=[0.99 0.11], training SNR=10'
 plot 'fix-ber-31.dat' u 1:2 w l t 'ZFE', \
      '' u 1:3 w l t 'MMSE', \
      '' u 1:4 w l t 'LMS', \
      '' u 1:5 w l t 'Hybrid', \
 
-set title 'order=31 tap=[0.73 -0.68]'
+set title 'order=31 tap=[0.73 -0.68], training SNR=10'
 plot 'fix-ber-31.dat' u 1:10 w l t 'ZFE', \
      '' u 1:11 w l t 'MMSE', \
      '' u 1:12 w l t 'LMS', \

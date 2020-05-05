@@ -10,9 +10,9 @@ set grid
 set xtic 6
 set logscale y 10
 
-set title 'order=5'
+set title '2 tap, order=5, training SNR=10'
 plot 'classic-ber.dat' u 1:4 w l t 'Zero Forcing', \
      '' u 1:5 w l t 'MMSE', \
      'lms-ber.dat' u 1:2 w l t 'LMS', \
      'cnn-ber.dat' u 1:2 w l t 'CNN w/ LMS data ', \
-     'cnn-ber.dat' u 1:4 w l t 'CNN w/ true inverse', \
+     'cnn-ber.dat' u 1:4 w l lt 7 t 'CNN w/ true inverse', \

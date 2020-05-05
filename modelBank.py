@@ -13,8 +13,8 @@ def load_est_model(order, path):
 
 cnn_est = load_est_model(5, path_cnn)
 cnn_est_31 = load_est_model(31, path_cnn_31)
-hybrid_est = HybridLmsEstimator(cnn_est, mu=0.03)
-hybrid_est_31 = HybridLmsEstimator(cnn_est_31, mu=0.01)
+hybrid_est = HybridLmsEstimator(cnn_est, mu=0.03, split=0.5)
+hybrid_est_31 = HybridLmsEstimator(cnn_est_31, mu=0.01, split=1)
 
 est_bank = {
     "zf-31": ZeroForcingEstimator(expand=8192, trunc=31, eps=0),
