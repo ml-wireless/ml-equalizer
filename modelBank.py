@@ -2,7 +2,7 @@ import torch
 from equalizer.model.classic import ZeroForcingEstimator, MMSEEstimator, LMSEstimator, FilterEqualizer, ClassicTap, DummyTap
 from equalizer.model.tap import TapEstimator, CNNEstimator, HybridLmsEstimator
 
-path_cnn = 'model/cnn-est.bin'
+path_cnn = 'model/cnn-est-5.bin'
 path_cnn_31 = 'model/cnn-est-31.bin'
 path_cnn_zf = 'model/cnn-est-zf.bin'
 

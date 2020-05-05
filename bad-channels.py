@@ -28,7 +28,7 @@ if __name__ == "__main__":
         avg = np.mean(bers)
         
         plt.subplot(len(snrs) * 100 + 21 + idx * 2)
-        plt.title('BER heatmap, 2 tap, order=5, SNR={}, avg={:.2%}'.format(snr, avg))
+        plt.title('BER heatmap, 2 tap, order=31, SNR={}, avg={:.2%}'.format(snr, avg))
         plt.xlabel('a0')
         plt.ylabel('a1')
         H1, xe, ye = np.histogram2d(taps[..., 0], taps[..., 1], 32, weights=bers)
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
         plt.subplot(len(snrs) * 100 + 22 + idx * 2)
         ang = np.arctan2(taps[..., 1], taps[..., 0])
-        plt.title('BER vs argument, 2 tap, order=5, SNR={}, avg={:.2%}'.format(snr, avg))
+        plt.title('BER vs argument, 2 tap, order=31, SNR={}, avg={:.2%}'.format(snr, avg))
         plt.xlabel('arg(a0, a1)')
         plt.ylim(-0.01, 0.51)
         plt.annotate("[0.99, 0.11]", (np.arctan2(0.11, 0.99) + 0.05, 0.3))
